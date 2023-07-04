@@ -6,5 +6,4 @@ openai
 requests
 faiss-cpu
 pika
-json
 tiktoken
