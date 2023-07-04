@@ -63,7 +63,7 @@ def on_request(ch, method, props, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
     print("body: ",json.dumps({"operation": "feedback", "result": str(response)}))
 # ensure the data is ingested at least once
-#def_ingest.mainapp()
+def_ingest.mainapp()
 
 print("setup chain")
 ai_utils.setup_chain()
