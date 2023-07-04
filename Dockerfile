@@ -18,8 +18,8 @@ RUN apt update && apt install chromium-driver -y
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 5000 available to the world outside this container
-EXPOSE 5000
+# Make port 5672 available to the world outside this container
+EXPOSE 5672
 
 # Run app.py when the container launches
 CMD ["python", "app.py"]
