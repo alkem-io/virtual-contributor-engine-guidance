@@ -1,79 +1,75 @@
-from flask import Flask, request
-from flask_restful import Resource, Api
-
+import pika
+import json
 import ai_utils
 import def_ingest
-import openai
-import json
-from json import JSONEncoder
 
-app = Flask(__name__)
-api = Api(app)
+rabbitmqhost = "rabbitmq-hostname"
+rabbitmqrequestqueue = "alkemio-chatbot-request"
+rabbitmqresponsequeue = "alkemio-chatbot-response"
 
-class Chatbot:
-    def __init__(self):
-        self.chat_history = []
-        self.docs = []
-        self.chain = ai_utils.setup_chain()
+chat_history = []
+docs = []
+chain = ai_utils.setup_chain()
 
-    def reset_history(self):
-        self.chat_history = []
-        self.docs = []
+# Establish a connection to RabbitMQ
+connection = pika.BlockingConnection(pika.ConnectionParameters(rabbitmqhost))
+channel = connection.channel()
 
-    def submit_query(self, query):
-        llm_result = self.chain(
-            {"question": query, "chat_history": self.chat_history}
-        )
-        self.chat_history.append(
+# Declare the queue
+channel.queue_declare(queue=rabbitmqrequestqueue)
+channel.queue_declare(queue=rabbitmqresponsequeue)
+
+# Define the functions
+def query(query):
+    print("query was: ", query)
+    #query_results = {"result": f"query results for {query}"}
+    llm_result = chain(
+       {"question": query, "chat_history": chat_history}
+    )
+    chat_history.append(
             (llm_result["question"], llm_result["answer"])
         )
-        return {"question": llm_result["question"], "answer": llm_result["answer"], "sources":str(llm_result["source_documents"])}
+    #return str({"question": llm_result["question"], "answer": llm_result["answer"], "sources":str(llm_result["source_documents"])})
+    return ("[{'question':'" + str(llm_result["question"]) 
+            + "'}, {'answer':'" + str(llm_result["answer"]) 
+            + "'}, {'sources':'" + str(llm_result["source_documents"])
+            + "'}]")
 
-    def get_chat_history(self):
-        return self.chat_history
+def reset():
+     chat_history = []
+     docs = []
+     return "Reset function executed"
 
-    def get_docs(self):
-        return self.docs
+def ingest():
+    def_ingest.mainapp()
+    return "Ingest function executed"
 
-class QueryAPI(Resource):
-    def post(self):
-        try:
-            json_data = request.get_json(force=True)
-            query = json_data['query']
-            # Process the query and return the result
-            print(query)
-            result = alkemio_chatbot.submit_query(query)
-            print (result)
-            return {'result': result}, 200
-        except KeyError:
-            return {'error': 'No query key provided'}, 400
+def on_request(ch, method, props, body):
+    message = json.loads(body)
 
-class ResetAPI(Resource):
-    def get(self):
-        # Here you should define what you want to do when /reset is called
-        # For now, let's just return a simple message
-        alkemio_chatbot.reset_history()
-        return {'result': 'Reset performed successfully'}, 200
+    if message['operation'] == 'query':
+        response = query(message['param'])
+    elif message['operation'] == 'reset':
+        response = reset()
+    elif message['operation'] == 'ingest':
+        response = ingest()
+    else:
+        response = "Unknown function"
 
-class IngestAPI(Resource):
-    def get(self):
-        # Here you should define what you want to do when /ingest is called
-        # For now, let's just return a simple message
-        def_ingest.mainapp()
-        return {'result': 'Ingest performed successfully'}, 200
-
-def_ingest.mainapp()
-
-print("define chatbot")
-alkemio_chatbot=Chatbot()
+    ch.basic_publish(exchange='',
+                     routing_key=props.reply_to,
+                     properties=pika.BasicProperties(correlation_id = props.correlation_id),
+                     body=json.dumps({"operation": "feedback", "result": str(response)}))
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+    print("body: ",json.dumps({"operation": "feedback", "result": str(response)}))
+# ensure the data is ingested at least once
+#def_ingest.mainapp()
 
 print("setup chain")
 ai_utils.setup_chain()
 
-api.add_resource(QueryAPI, '/query')
-api.add_resource(ResetAPI, '/reset')
-api.add_resource(IngestAPI, '/ingest')
+channel.basic_qos(prefetch_count=1)
+channel.basic_consume(queue=rabbitmqrequestqueue, on_message_callback=on_request)
 
-
-if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0')
+print("Waiting for RPC requests")
+channel.start_consuming()
