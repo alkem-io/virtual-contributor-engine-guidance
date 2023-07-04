@@ -1,3 +1,5 @@
 .openai.env
 openai.env
 azure.env
+/__pycache__/*
+/local_index/*

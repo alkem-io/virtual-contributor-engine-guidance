@@ -21,23 +21,31 @@ Training a LLM is prohibitatively expensive for most organisations, but for most
 
 ## Implementation
 
-The projects has been implemented as a container based micro-service with a RESTful API. The API has three endpoints:
-- ingest: data collection from the Alkemio foundation website and embedding using the [OpenAI Ada text model](https://openai.com/blog/new-and-improved-embedding-model).
-- reset: reset the chat history for the ongoing chat
-- query: post the next question in a chat sequence..
+The projects has been implemented as a container based micro-service with a RabbitMQ RPC. There are two RabbitMQ queues:
+- `alkemio-chatbot-request` - queue for submitting requests to the microservice
+- `alkemio-chatbot-response` - queue for receiving responses from the microservice
 
-The first two endpoints are implemented as GET HTML request and the query endpoint is implemeted as a POST HTML request.
+Request need to be submitted with the following properties:
+- `correlation_id` - a unique correlation id for a specific user
+- `reply_to` - name of the response queue (`alkemio-chatbot-response`)
 
-### example query
-An example query looks like this, 
-`curl --header "Content-Type: application/json"  --request POST  --data '{"query":"Who are the co-founders of alkemio?"}'  http://localhost:5000/query`
+The request payload consists of json with the following structure `{"operation" : "*operation type*", "param": "*addition request data*"} 
+
+The operation types are:
+- `ingest`: data collection from the Alkemio foundation website and embedding using the [OpenAI Ada text model](https://openai.com/blog/new-and-improved-embedding-model), no *addition request data*.
+- `reset`: reset the chat history for the ongoing chat, no *addition request data*.
+- `query`: post the next question in a chat sequence, with user question as *addition request data*
+
+The response is published in the `alkemio-chatbot-response`.
+
+The microservice expects a RabbitMQ server to be available on the specified host with no authentication requirements and the default port 5672.
 
 ### Docker 
 The following command can be used to build the container from the Docker CLI:
 `docker build -t genai-api . `
 
 The following command can be used to start the container from the Docker CLI:
-`docker run --name genai-api -v /dev/shm:/dev/shm -p 5000:5000 -e "OPENAI_API_KEY=$OPENAI_API_KEY" genai-api `
+`docker run --name genai-api -v /dev/shm:/dev/shm -p 5672:5672 -e "OPENAI_API_KEY=$OPENAI_API_KEY" genai-api`
 
 ### Python
 The required Python packages are listed in the `requirements.txt` file.
@@ -46,15 +54,11 @@ The required Python packages are listed in the `requirements.txt` file.
 The project required Python 3.10 as a minimum and the chromium driver is required for scraing of the Alkemio website:
 install Chromium-driver: `sudo apt-get install chromium-driver`
 
-### Docker
-`docker run --name genai-api -v /dev/shm:/dev/shm -p 5000:5000 -e "OPENAI_API_KEY=$OPENAI_API_KEY" genai-api`
-
 ## Outstanding tasks
 This Proof of Concept is functional, but morework is required to make it production ready, including:
 - allow for multiple users at the same time, each having their own chat history.
-- run on a production [WSGI server](https://flask.palletsprojects.com/en/2.2.x/deploying/).
 - make it deployable on Kubernetes.
 - improve the LLM performance (e.g. chunck sizes, LLM parameters, prompt template).
 - improve security and error handling.
 - improve the comments in the code and code optimsation.
-- add additional configuration options (e.g. eas yswitch between OpenAI and Azure OpenAI, target website)
+- add additional configuration options (e.g. easy switch between OpenAI and Azure OpenAI, target website)

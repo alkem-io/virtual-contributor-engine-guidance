@@ -5,6 +5,5 @@ pytesseract
 openai
 requests
 faiss-cpu
-flask
-flask-restful
+pika
 tiktoken
