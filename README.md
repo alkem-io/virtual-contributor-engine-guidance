@@ -40,6 +40,8 @@ The response is published in the `alkemio-chatbot-response`.
 
 The microservice expects a RabbitMQ server to be available on the specified host with no authentication requirements and the default port 5672.
 
+*note: there is an earlier (outdated) RESTful implementation available at https://github.com/alkem-io/poc-genai-api/tree/http-api
+
 ### Docker 
 The following command can be used to build the container from the Docker CLI:
 `docker build -t genai-api . `
