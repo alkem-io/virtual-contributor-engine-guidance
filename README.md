@@ -45,7 +45,11 @@ The following command can be used to build the container from the Docker CLI:
 `docker build -t genai-api . `
 
 The following command can be used to start the container from the Docker CLI:
-`docker run --name genai-api -v /dev/shm:/dev/shm -p 5672:5672 -e "OPENAI_API_KEY=$OPENAI_API_KEY" genai-api`
+`docker run --name genai-api -v /dev/shm:/dev/shm -p 5672:5672 -e "OPENAI_API_KEY=$OPENAI_API_KEY" -e "RABBITMQ_HOST=$RABBITMQ_HOST" genai-api`
+
+with:
+- `OPENAI_API_KEY`: a valid OpenAI API key
+- `RABBITMQ_HOST`: the RabbitMQ host name
 
 ### Python
 The required Python packages are listed in the `requirements.txt` file.

@@ -1,9 +1,10 @@
+import os
 import pika
 import json
 import ai_utils
 import def_ingest
 
-rabbitmqhost = "rabbitmq-hostname"
+rabbitmqhost = os.environ['RABBITMQ_HOST']
 rabbitmqrequestqueue = "alkemio-chatbot-request"
 rabbitmqresponsequeue = "alkemio-chatbot-response"
 
@@ -22,14 +23,12 @@ channel.queue_declare(queue=rabbitmqresponsequeue)
 # Define the functions
 def query(query):
     print("query was: ", query)
-    #query_results = {"result": f"query results for {query}"}
     llm_result = chain(
        {"question": query, "chat_history": chat_history}
     )
     chat_history.append(
             (llm_result["question"], llm_result["answer"])
         )
-    #return str({"question": llm_result["question"], "answer": llm_result["answer"], "sources":str(llm_result["source_documents"])})
     return ("[{'question':'" + str(llm_result["question"]) 
             + "'}, {'answer':'" + str(llm_result["answer"]) 
             + "'}, {'sources':'" + str(llm_result["source_documents"])
@@ -62,6 +61,7 @@ def on_request(ch, method, props, body):
                      body=json.dumps({"operation": "feedback", "result": str(response)}))
     ch.basic_ack(delivery_tag=method.delivery_tag)
     print("body: ",json.dumps({"operation": "feedback", "result": str(response)}))
+
 # ensure the data is ingested at least once
 def_ingest.mainapp()
 
