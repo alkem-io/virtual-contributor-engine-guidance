@@ -62,7 +62,6 @@ install Chromium-driver: `sudo apt-get install chromium-driver`
 
 ## Outstanding tasks
 This Proof of Concept is functional, but morework is required to make it production ready, including:
-- allow for multiple users at the same time, each having their own chat history.
 - make it deployable on Kubernetes.
 - improve the LLM performance (e.g. chunck sizes, LLM parameters, prompt template).
 - improve security and error handling.

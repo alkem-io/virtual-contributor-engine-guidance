@@ -8,36 +8,50 @@ rabbitmqhost = os.environ['RABBITMQ_HOST']
 rabbitmqrequestqueue = "alkemio-chatbot-request"
 rabbitmqresponsequeue = "alkemio-chatbot-response"
 
-chat_history = []
-docs = []
-chain = ai_utils.setup_chain()
+# Dictionary to store chat history and documents for each user
+user_data = {}
 
 # Establish a connection to RabbitMQ
 connection = pika.BlockingConnection(pika.ConnectionParameters(rabbitmqhost))
 channel = connection.channel()
 
-# Declare the queue
+# Declare the queues
 channel.queue_declare(queue=rabbitmqrequestqueue)
 channel.queue_declare(queue=rabbitmqresponsequeue)
 
 # Define the functions
-def query(query):
-    print("query was: ", query)
-    llm_result = chain(
-       {"question": query, "chat_history": chat_history}
+def query(user_id, query):
+    print("Query from user", user_id, ": ", query)
+    
+    # Retrieve or initialize user data
+    if user_id not in user_data:
+        user_data[user_id] = {
+            'chat_history': [],
+            'docs': []
+        }
+    
+    chat_history = user_data[user_id]['chat_history']
+    
+    llm_result = ai_utils.setup_chain()(
+        {"question": query, "chat_history": chat_history}
     )
-    chat_history.append(
-            (llm_result["question"], llm_result["answer"])
-        )
-    return ("[{'question':'" + str(llm_result["question"]) 
+    
+    chat_history.append((llm_result["question"], llm_result["answer"]))
+    
+    
+    response = ("[{'question':'" + str(llm_result["question"]) 
             + "'}, {'answer':'" + str(llm_result["answer"]) 
             + "'}, {'sources':'" + str(llm_result["source_documents"])
             + "'}]")
 
-def reset():
-     chat_history = []
-     docs = []
-     return "Reset function executed"
+    return response
+
+def reset(user_id):
+    if user_id in user_data:
+        user_data[user_id]['chat_history'] = []
+        user_data[user_id]['docs'] = []
+    
+    return "Reset function executed"
 
 def ingest():
     def_ingest.mainapp()
@@ -45,28 +59,35 @@ def ingest():
 
 def on_request(ch, method, props, body):
     message = json.loads(body)
-
-    if message['operation'] == 'query':
-        response = query(message['param'])
-    elif message['operation'] == 'reset':
-        response = reset()
-    elif message['operation'] == 'ingest':
-        response = ingest()
+    user_id = props.correlation_id
+    
+    if user_id is None:
+        response = "Correlation ID not provided"
     else:
-        response = "Unknown function"
+        if message['operation'] == 'query':
+            if 'param' in message:
+                response = query(user_id, message['param'])
+            else:
+                response = "Query parameter not provided"
+        elif message['operation'] == 'reset':
+            response = reset(user_id)
+        elif message['operation'] == 'ingest':
+            response = ingest()
+        else:
+            response = "Unknown function"
 
-    ch.basic_publish(exchange='',
-                     routing_key=props.reply_to,
-                     properties=pika.BasicProperties(correlation_id = props.correlation_id),
-                     body=json.dumps({"operation": "feedback", "result": str(response)}))
+    ch.basic_publish(
+        exchange='',
+        routing_key=props.reply_to,
+        properties=pika.BasicProperties(correlation_id=user_id),
+        body=json.dumps({"operation": "feedback", "result": response})
+    )
+    
     ch.basic_ack(delivery_tag=method.delivery_tag)
-    print("body: ",json.dumps({"operation": "feedback", "result": str(response)}))
+    print("Response sent for correlation_id:", user_id)
 
-# ensure the data is ingested at least once
+# Ensure the data is ingested at least once
 def_ingest.mainapp()
-
-print("setup chain")
-ai_utils.setup_chain()
 
 channel.basic_qos(prefetch_count=1)
 channel.basic_consume(queue=rabbitmqrequestqueue, on_message_callback=on_request)
