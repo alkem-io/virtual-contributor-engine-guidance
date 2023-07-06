@@ -11,9 +11,19 @@ import os
 
 
 # Set Context for response
-TEMPLATE = """Act as a product expert. Your role is to answer any Alkemio related questions. Return your response in markdown, so you can highlight important elements. If the answer cannot be found within the context, write 'I could not find an answer' 
+TEMPLATE = """
+- Act as a product and innovation expert.
+- Your task is to answer user questions. 
+- Return your response in markdown, and highlight important elements.
+- If the answer cannot be found within the context, write 'I could not find an answer to your question'.
+- Provide concise replies that are polite and professional. 
+- Use the following context to answer the query. 
 
-Use the following context from the Alkemio website to answer the query. Make sure to read all the context before providing an answer.\nContext:\n{context}\nQuestion: {question}
+Context:
+{context}
+
+Question:
+{question}
 """
 
 QA_PROMPT = PromptTemplate(template=TEMPLATE, input_variables=["question", "context"])
@@ -21,7 +31,7 @@ QA_PROMPT = PromptTemplate(template=TEMPLATE, input_variables=["question", "cont
 
 def setup_chain():
     llm = ChatOpenAI(
-        temperature=0.5,
+        temperature=0.6,
         openai_api_key=os.environ["OPENAI_API_KEY"],
         model_name="gpt-3.5-turbo",
     )
