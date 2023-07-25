@@ -3,21 +3,26 @@ import pika
 import json
 import ai_utils
 import def_ingest
+from dotenv import load_dotenv
 
-rabbitmqhost = os.environ['RABBITMQ_HOST']
-rabbitmqrequestqueue = "alkemio-chatbot-request"
-rabbitmqresponsequeue = "alkemio-chatbot-response"
+load_dotenv()
+
+rabbitmq_host = os.getenv('RABBITMQ_HOST')
+rabbitmq_user = os.getenv('RABBITMQ_USER')
+rabbitmq_password = os.getenv('RABBITMQ_PASSWORD')
+rabbitmqrequestqueue = "alkemio-chat-guidance"
 
 # Dictionary to store chat history and documents for each user
 user_data = {}
 
 # Establish a connection to RabbitMQ
-connection = pika.BlockingConnection(pika.ConnectionParameters(rabbitmqhost))
+credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_password)
+parameters = pika.ConnectionParameters(host=rabbitmq_host, credentials=credentials)
+connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 
 # Declare the queues
 channel.queue_declare(queue=rabbitmqrequestqueue)
-channel.queue_declare(queue=rabbitmqresponsequeue)
 
 # Define the functions
 def query(user_id, query):
@@ -38,11 +43,12 @@ def query(user_id, query):
     
     chat_history.append((llm_result["question"], llm_result["answer"]))
     
-    
-    response = ("[{'question':'" + str(llm_result["question"]) 
-            + "'}, {'answer':'" + str(llm_result["answer"]) 
-            + "'}, {'sources':'" + str(llm_result["source_documents"])
-            + "'}]")
+    response = json.dumps({
+        "question": str(llm_result["question"]),
+        "answer": str(llm_result["answer"]),
+        "sources": str(llm_result["source_documents"])
+        }
+    )
 
     return response
 
@@ -64,14 +70,14 @@ def on_request(ch, method, props, body):
     if user_id is None:
         response = "Correlation ID not provided"
     else:
-        if message['operation'] == 'query':
-            if 'param' in message:
-                response = query(user_id, message['param'])
+        if message['data']['operation'] == 'query':
+            if 'param' in message['data'] and 'question' in message['data']['param']:
+                response = query(user_id, message['data']['param']['question'])
             else:
                 response = "Query parameter not provided"
-        elif message['operation'] == 'reset':
+        elif message['data']['operation'] == 'reset':
             response = reset(user_id)
-        elif message['operation'] == 'ingest':
+        elif message['data']['operation'] == 'ingest':
             response = ingest()
         else:
             response = "Unknown function"

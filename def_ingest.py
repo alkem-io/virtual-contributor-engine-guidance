@@ -47,8 +47,8 @@ def load_html_text(sitemap_urls):
 
 
 def embed_text(texts, save_loc):
-    #embeddings = OpenAIEmbeddings(deployment="embedding", chunk_size=1)
-    embeddings = OpenAIEmbeddings()
+    embeddings = OpenAIEmbeddings(deployment="embedding", chunk_size=1)
+    # embeddings = OpenAIEmbeddings()
     docsearch = FAISS.from_documents(texts, embeddings)
 
     docsearch.save_local(save_loc)
