@@ -70,14 +70,15 @@ def on_request(ch, method, props, body):
     if user_id is None:
         response = "Correlation ID not provided"
     else:
-        if message['data']['operation'] == 'query':
-            if 'param' in message['data'] and 'question' in message['data']['param']:
-                response = query(user_id, message['data']['param']['question'])
+        operation = message['pattern']['cmd']
+        if operation == 'query':
+            if 'question' in message['data']:
+                response = query(user_id, message['data']['question'])
             else:
                 response = "Query parameter not provided"
-        elif message['data']['operation'] == 'reset':
+        elif operation == 'reset':
             response = reset(user_id)
-        elif message['data']['operation'] == 'ingest':
+        elif operation == 'ingest':
             response = ingest()
         else:
             response = "Unknown function"
