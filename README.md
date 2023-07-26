@@ -51,9 +51,9 @@ The following command can be used to start the container from the Docker CLI:
 
 with:
 - `OPENAI_API_KEY`: a valid OpenAI API key
-- `OPENAI_API_TYPE`: a valid OpenAI API key
-- `OPENAI_API_VERSION`: a valid OpenAI API key
-- `OPENAI_API_BASE`: a valid OpenAI API key
+- `OPENAI_API_TYPE`: a valid OpenAI API type. For Azure, the value is `azure`
+- `OPENAI_API_VERSION`: a valid Azure OpenAI version. At the moment of writing, latest is `2023-05-15`
+- `OPENAI_API_BASE`: a valid Azure OpenAI base URL, e.g. `https://{your-azure-resource-name}.openai.azure.com/`
 - `RABBITMQ_HOST`: the RabbitMQ host name
 - `RABBITMQ_USER`: the RabbitMQ user
 - `RABBITMQ_PASSWORD`: the RabbitMQ password
