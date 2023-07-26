@@ -8,3 +8,4 @@ faiss-cpu
 pika
 tiktoken
 load_dotenv
+flake8
