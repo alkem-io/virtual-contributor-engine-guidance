@@ -36,6 +36,6 @@ def setup_chain():
     chain = ConversationalRetrievalChain.from_llm(
         llm, vectorstore.as_retriever(), return_source_documents=True
     )
-    print("\n\nchain:\n",chain)
+    print("\n\nchain:\n", chain)
 
     return chain
