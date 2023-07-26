@@ -4,7 +4,6 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.chains.question_answering import load_qa_chain
 from langchain.vectorstores import FAISS
 from langchain.chat_models import ChatOpenAI
-# Import Azure OpenAI
 from langchain.llms import AzureOpenAI
 
 import os
@@ -30,14 +29,8 @@ QA_PROMPT = PromptTemplate(template=TEMPLATE, input_variables=["question", "cont
 
 
 def setup_chain():
-    # llm = ChatOpenAI(
-    #     temperature=0.6,
-    #     openai_api_key=os.environ["OPENAI_API_KEY"],
-    #     model_name="gpt-3.5-turbo",
-    # )
-    llm = AzureOpenAI(deployment_name="deploy-gpt-35-turbo",model_name="gpt-35-turbo", temperature=0.3)
-    # embeddings = OpenAIEmbeddings(openai_api_key=os.environ["OPENAI_API_KEY"])
-    embeddings = OpenAIEmbeddings(deployment="embedding", chunk_size=1)
+    llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"], temperature=os.environ["AI_MODEL_TEMPERATURE"])
+    embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NAME"], chunk_size=1)
     vectorstore = FAISS.load_local("local_index", embeddings)
 
     chain = ConversationalRetrievalChain.from_llm(

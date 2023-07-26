@@ -51,7 +51,18 @@ The following command can be used to start the container from the Docker CLI:
 
 with:
 - `OPENAI_API_KEY`: a valid OpenAI API key
+- `OPENAI_API_TYPE`: a valid OpenAI API key
+- `OPENAI_API_VERSION`: a valid OpenAI API key
+- `OPENAI_API_BASE`: a valid OpenAI API key
 - `RABBITMQ_HOST`: the RabbitMQ host name
+- `RABBITMQ_USER`: the RabbitMQ user
+- `RABBITMQ_PASSWORD`: the RabbitMQ password
+- `AI_MODEL_TEMPERATURE`: the `temperature` of the model, use value between 0 and 1. 1 means more randomized answer, closer to 0 - a stricter one
+- `AI_MODEL_NAME`: the model name in Azure
+- `AI_DEPLOYMENT_NAME`: the AI gpt model deployment name in Azure
+- `AI_EMBEDDINGS_DEPLOYMENT_NAME`: the AI embeddings model deployment name in Azure
+
+You can find sample values in `.azure-template.env` and `.openai-template.env`. Configure them and create `.env` file with the updated settings.
 
 ### Python
 The required Python packages are listed in the `requirements.txt` file.
