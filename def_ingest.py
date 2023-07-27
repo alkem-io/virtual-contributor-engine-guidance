@@ -17,7 +17,6 @@ options.add_argument("--no-sandbox")
 driver = webdriver.Chrome(service=service, options=options)
 
 
-
 def extract_urls_from_sitemap(sitemap_url):
     response = requests.get(sitemap_url)
     if response.status_code != 200:
@@ -47,8 +46,7 @@ def load_html_text(sitemap_urls):
 
 
 def embed_text(texts, save_loc):
-    #embeddings = OpenAIEmbeddings(deployment="embedding", chunk_size=1)
-    embeddings = OpenAIEmbeddings()
+    embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NAME"], chunk_size=1)
     docsearch = FAISS.from_documents(texts, embeddings)
 
     docsearch.save_local(save_loc)
@@ -79,5 +77,3 @@ def mainapp() -> None:
     # print(texts)
     # Save embeddings to local_index
     embed_text(texts, "local_index")
-
-
