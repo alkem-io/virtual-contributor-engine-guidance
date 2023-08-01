@@ -1,9 +1,7 @@
 from langchain.prompts.prompt import PromptTemplate
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains.question_answering import load_qa_chain
 from langchain.vectorstores import FAISS
-from langchain.chat_models import ChatOpenAI
 from langchain.llms import AzureOpenAI
 
 import os

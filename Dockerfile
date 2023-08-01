@@ -4,14 +4,17 @@ FROM python:3-slim-bookworm
 # Set the working directory in the container to /app
 WORKDIR /app
 
+# Install Poetry
+RUN pip install poetry
+
 # Copy the current directory contents into the container at /app
 COPY . /app
 
 # install chromium-driver
 RUN apt update && apt install chromium-driver -y
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Use Poetry to install dependencies
+RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi
 
 # Run app.py when the container launches
 CMD ["python", "app.py"]

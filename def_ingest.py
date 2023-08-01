@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+import nltk
 
 # Setup Chrome Driver, may need to change based on system
 service = Service("/usr/bin/chromedriver")
@@ -62,6 +63,10 @@ def mainapp() -> None:
         N/A
     """
     # Site maps for the Alkemio website
+
+    nltk.download('taggers')
+    nltk.download('tokenizers')
+
     sitemap_url_list = [
         "https://www.alkemio.org/sitemap.xml",
     ]
