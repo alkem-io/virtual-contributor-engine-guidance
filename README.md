@@ -21,13 +21,8 @@ Training a LLM is prohibitatively expensive for most organisations, but for most
 
 ## Implementation
 
-The projects has been implemented as a container based micro-service with a RabbitMQ RPC. There are two RabbitMQ queues:
-- `alkemio-chatbot-request` - queue for submitting requests to the microservice
-- `alkemio-chatbot-response` - queue for receiving responses from the microservice
-
-Request need to be submitted with the following properties:
-- `correlation_id` - a unique correlation id for a specific user
-- `reply_to` - name of the response queue (`alkemio-chatbot-response`)
+The projects has been implemented as a container based micro-service with a RabbitMQ RPC. There is one RabbitMQ queue:
+- `alkemio-chat-guidance` - queue for submitting requests to the microservice
 
 The request payload consists of json with the following structure `{"operation" : "*operation type*", "param": "*addition request data*"} 
 
@@ -36,18 +31,16 @@ The operation types are:
 - `reset`: reset the chat history for the ongoing chat, no *addition request data*.
 - `query`: post the next question in a chat sequence, with user question as *addition request data*
 
-The response is published in the `alkemio-chatbot-response`.
+The response is published in an auto-generated, exclusive, unnamed queue.
 
-The microservice expects a RabbitMQ server to be available on the specified host with no authentication requirements and the default port 5672.
-
-*note: there is an earlier (outdated) RESTful implementation available at https://github.com/alkem-io/poc-genai-api/tree/http-api
+*note: there is an earlier (outdated) RESTful implementation available at https://github.com/alkem-io/guidance-engine/tree/http-api
 
 ### Docker 
 The following command can be used to build the container from the Docker CLI:
-`docker build -t genai-api . `
+`docker build -t guidance-engine . `
 
 The following command can be used to start the container from the Docker CLI:
-`docker run --name genai-api -v /dev/shm:/dev/shm -p 5672:5672 -e "OPENAI_API_KEY=$OPENAI_API_KEY" -e "RABBITMQ_HOST=$RABBITMQ_HOST" genai-api`
+`docker run --name guidance-engine -v /dev/shm:/dev/shm -v .env guidance-engine`
 
 with:
 - `OPENAI_API_KEY`: a valid OpenAI API key
@@ -64,17 +57,14 @@ with:
 
 You can find sample values in `.azure-template.env` and `.openai-template.env`. Configure them and create `.env` file with the updated settings.
 
-### Python
-The required Python packages are listed in the `requirements.txt` file.
+### Python & Poetry
+The project requires Python & Poetry installed. The minimum version dependencies can be found at `pyproject.toml`.
+After installing Python & Poetry, you simply need to run `poetry run python app.py`
 
 ### Linux
 The project required Python 3.10 as a minimum and the chromium driver is required for scraing of the Alkemio website:
 install Chromium-driver: `sudo apt-get install chromium-driver`
 
-## Outstanding tasks
-This Proof of Concept is functional, but morework is required to make it production ready, including:
-- make it deployable on Kubernetes.
-- improve the LLM performance (e.g. chunck sizes, LLM parameters, prompt template).
-- improve security and error handling.
-- improve the comments in the code and code optimsation.
-- add additional configuration options (e.g. easy switch between OpenAI and Azure OpenAI, target website)
+Note: make sure the version of the driver of chromium-driver is compatible with your chrome version. Otherwise, in order for this to work, you will need to:
+- re-install chrome / chromium driver to match the versions
+- uninstall chrome

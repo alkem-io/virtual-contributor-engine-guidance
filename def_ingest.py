@@ -61,6 +61,7 @@ def mainapp() -> None:
     Returns:
         N/A
     """
+
     # Site maps for the Alkemio website
     sitemap_url_list = [
         "https://www.alkemio.org/sitemap.xml",

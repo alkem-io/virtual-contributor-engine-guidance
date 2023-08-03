@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an idea for this project
 title: ""
-labels: "enhancement, ai, genai, chatbot, chatguidance"
+labels: "enhancement, ai, genai, chatbot, chatguidance, guidance engine"
 assignees: ""
 ---
 
