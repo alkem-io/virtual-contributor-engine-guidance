@@ -2,23 +2,23 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   namespace: default
-  name: alkemio-genai-deployment
+  name: alkemio-guidance-engine-deployment
   labels:
-    app: alkemio-genai
+    app: alkemio-guidance-engine
 
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: alkemio-genai
+      app: alkemio-guidance-engine
   template:
     metadata:
       labels:
-        app: alkemio-genai
+        app: alkemio-guidance-engine
     spec:
       containers:
-        - name: alkemio-genai
-          image: alkemio.azurecr.io/alkemio-genai:latest
+        - name: alkemio-guidance-engine
+          image: alkemio.azurecr.io/alkemio-guidance-engine:latest
           env:
             - name: RABBITMQ_HOST
               valueFrom:

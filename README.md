@@ -33,14 +33,14 @@ The operation types are:
 
 The response is published in an auto-generated, exclusive, unnamed queue.
 
-*note: there is an earlier (outdated) RESTful implementation available at https://github.com/alkem-io/poc-genai-api/tree/http-api
+*note: there is an earlier (outdated) RESTful implementation available at https://github.com/alkem-io/guidance-engine/tree/http-api
 
 ### Docker 
 The following command can be used to build the container from the Docker CLI:
-`docker build -t genai-api . `
+`docker build -t guidance-engine . `
 
 The following command can be used to start the container from the Docker CLI:
-`docker run --name genai-api -v /dev/shm:/dev/shm -v .env genai-api`
+`docker run --name guidance-engine -v /dev/shm:/dev/shm -v .env guidance-engine`
 
 with:
 - `OPENAI_API_KEY`: a valid OpenAI API key
