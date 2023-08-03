@@ -14,7 +14,7 @@ COPY . /app
 RUN apt update && apt install chromium-driver -y
 
 # Use Poetry to install dependencies
-RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi
+RUN poetry config virtualenvs.create true && poetry install --no-interaction --no-ansi
 
 # Run app.py when the container launches
-CMD ["python", "app.py"]
+CMD ["poetry", "run", "python", "app.py"]
