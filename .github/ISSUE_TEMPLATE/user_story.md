@@ -2,7 +2,7 @@
 name: User Story
 about: A valuable increment of functionality, testable by the users
 title: ""
-labels: "user story, ai, genai, chatbot, chatguidance"
+labels: "user story, ai, genai, chatbot, chatguidance, guidance engine"
 assignees: ""
 ---
 

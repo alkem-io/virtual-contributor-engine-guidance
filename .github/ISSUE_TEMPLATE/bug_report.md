@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a report to help us improve
 title: "BUG: "
-labels: "bug, ai, genai, chatbot, chatguidance"
+labels: "bug, ai, genai, chatbot, chatguidance, guidance engine"
 assignees: ""
 ---
 
