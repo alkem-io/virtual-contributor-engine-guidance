@@ -4,3 +4,4 @@ openai.env
 azure.env
 /__pycache__/*
 /local_index/*
+local.env

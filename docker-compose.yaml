@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+    guidance-engine:
+        container_name: guidance-engine
+        volumes:
+            - '/dev/shm:/dev/shm'
+        env_file:
+          - .env
+        image: guidance-engine

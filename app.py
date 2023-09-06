@@ -4,7 +4,6 @@ import json
 import ai_utils
 import def_ingest
 from dotenv import load_dotenv
-
 load_dotenv()
 
 config = {
@@ -12,6 +11,9 @@ config = {
     "rabbitmq_user": os.getenv('RABBITMQ_USER'),
     "rabbitmq_password": os.getenv('RABBITMQ_PASSWORD'),
     "rabbitmqrequestqueue": "alkemio-chat-guidance",
+    "source_website": os.getenv('AI_SOURCE_WEBSITE'),
+    "website_repo": os.getenv('AI_WEBSITE_REPO'),
+    "local_path": os.getenv('AI_LOCAL_PATH')
 }
 
 user_data = {}
@@ -25,24 +27,41 @@ channel = connection.channel()
 
 channel.queue_declare(queue=config['rabbitmqrequestqueue'])
 
-def query(user_id, query):
-    print(f"Query from user {user_id}: {query}")
+def query(user_id, query, language_code):
+    print(f"\nQuery from user {user_id}: {query}\n")
 
     if user_id not in user_data:
         reset(user_id)
 
+    user_data[user_id]['language']= ai_utils.get_language_by_code(language_code)
+
+    print(f"\nlanguage: {user_data[user_id]['language']}\n")
     chat_history = user_data[user_id]['chat_history']
 
-    llm_result = ai_utils.setup_chain()(
-        {"question": query, "chat_history": chat_history}
+    llm_result =ai_utils.qa_chain(
+        query,
+        chat_history,
+        user_data[user_id]['language']
     )
 
-    chat_history.append((llm_result["question"], llm_result["answer"]))
+    print(f"\n\nLLM result: {llm_result}\n\n")
+
+    
+    formatted_messages = (
+        f"Human:'{llm_result['question']}'",
+        f"AI:'{llm_result['answer']}'"
+)
+    user_data[user_id]['chat_history'].append(formatted_messages)
+
+    # only keep the last 3 entires of that chat history to avoid exceeding the token limit.
+    user_data[user_id]['chat_history']=user_data[user_id]['chat_history'][-3:]
+
+    print(f"new chat history {user_data[user_id]['chat_history']}")
 
     response = json.dumps({
-        "question": str(llm_result["question"]),
-        "answer": str(llm_result["answer"]),
-        "sources": str(llm_result["source_documents"])
+        "question": str(llm_result["question"])
+        ,"answer": str(llm_result["answer"])
+        ,"sources": str(llm_result["source_documents"])
     }
     )
 
@@ -50,14 +69,14 @@ def query(user_id, query):
 
 def reset(user_id):
     user_data[user_id] = {
-        'chat_history': [],
-        'docs': []
+        'chat_history': []
     }
 
     return "Reset function executed"
 
-def ingest():
-    def_ingest.mainapp()
+def ingest(source_url, website_repo, local_path):
+    def_ingest.clone_and_generate(website_repo,local_path)
+    def_ingest.mainapp(source_url)
     return "Ingest function executed"
 
 def on_request(ch, method, props, body):
@@ -67,16 +86,16 @@ def on_request(ch, method, props, body):
     operation = message['pattern']['cmd']
 
     if operation == 'ingest':
-        response = ingest()
+        response = ingest(config['source_website'],config['website_repo'],config['local_path'])
     else:
         if user_id is None:
             response = "userId not provided"
         else:
             if operation == 'query':
-                if 'question' in message['data']:
-                    response = query(user_id, message['data']['question'])
+                if ('question' in message['data']) and ('language' in message['data']):
+                    response = query(user_id, message['data']['question'], message['data']['language'])
                 else:
-                    response = "Query parameter not provided"
+                    response = "Query parameter(s) not provided"
             elif operation == 'reset':
                 response = reset(user_id)
             else:
@@ -91,9 +110,11 @@ def on_request(ch, method, props, body):
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
     print(f"Response sent for correlation_id: {props.correlation_id}")
+    print(f"Response sent to: {props.reply_to}")
+    print(f"response: {response}")
 
-
-def_ingest.mainapp()
+def_ingest.clone_and_generate(config['website_repo'],config['local_path'])
+def_ingest.mainapp(config['source_website'])
 
 channel.basic_qos(prefetch_count=1)
 channel.basic_consume(queue=config['rabbitmqrequestqueue'], on_message_callback=on_request)
