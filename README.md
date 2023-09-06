@@ -100,3 +100,9 @@ The following tasks are still outstanding:
 - assess overall quality and performance of the model and make improvements as and when required.
 - assess the need to summarize the chat history to avoid exceeding the prompt token limit.
 - update the yaml manifest.
+- add error handling.
+- perform extensive testing, in particular in multi-user scenarios.
+- look at improvements of the ingestion. As a minimum the service engine should not consume queries whilst the ingestion is ongoing, as thatwill lead to errors.
+- look at the use of `temperature` for the `QARetrievalChain`. It is not so obvious how this is handled.
+- look at the possibility to implement reinforcement learning.
+- return the actual LLM costs and token usage for queries.
