@@ -1,10 +1,26 @@
 version: '3'
 
+networks:
+  alkemio:
+
 services:
-    guidance-engine:
-        container_name: guidance-engine
-        volumes:
-            - '/dev/shm:/dev/shm'
-        env_file:
-          - .env
-        image: guidance-engine
+  guidance-engine:
+      container_name: guidance-engine
+      volumes:
+          - '/dev/shm:/dev/shm'
+          - ~/alkemio/data:/home/alkemio/data
+      env_file:
+        - .env
+      image: guidance-engine
+      networks:
+        - alkemio
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+    networks:
+      - alkemio
