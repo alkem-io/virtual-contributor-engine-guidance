@@ -16,6 +16,11 @@ config = {
     "local_path": os.getenv('AI_LOCAL_PATH')
 }
 
+local_path=config['local_path']
+website_source_path=local_path+"/website-source"
+website_generated_path=local_path+"/website-generated"
+vectordb_path=local_path+"/local_index"
+
 user_data = {}
 
 credentials = pika.PlainCredentials(config['rabbitmq_user'],
@@ -38,11 +43,13 @@ def query(user_id, query, language_code):
     print(f"\nlanguage: {user_data[user_id]['language']}\n")
     chat_history = user_data[user_id]['chat_history']
 
-    llm_result =ai_utils.qa_chain(
-        query,
-        chat_history,
-        user_data[user_id]['language']
-    )
+    #llm_result =ai_utils.qa_chain(
+    #    query,
+    #    chat_history,
+    #    user_data[user_id]['language']
+    #)
+
+    llm_result=qa_chain({"question": query, "chat_history": chat_history, "language": user_data[user_id]['language']})
 
     print(f"\n\nLLM result: {llm_result}\n\n")
 
@@ -74,8 +81,8 @@ def reset(user_id):
 
     return "Reset function executed"
 
-def ingest(source_url, website_repo, local_path):
-    def_ingest.clone_and_generate(website_repo,local_path)
+def ingest(source_url, website_repo, destination_path, source_path):
+    def_ingest.clone_and_generate(website_repo, destination_path, source_path)
     def_ingest.mainapp(source_url)
     return "Ingest function executed"
 
@@ -86,7 +93,7 @@ def on_request(ch, method, props, body):
     operation = message['pattern']['cmd']
 
     if operation == 'ingest':
-        response = ingest(config['source_website'],config['website_repo'],config['local_path'])
+        response = ingest(config['source_website'],config['website_repo'], website_generated_path, website_source_path)
     else:
         if user_id is None:
             response = "userId not provided"
@@ -113,8 +120,15 @@ def on_request(ch, method, props, body):
     print(f"Response sent to: {props.reply_to}")
     print(f"response: {response}")
 
-def_ingest.clone_and_generate(config['website_repo'],config['local_path'])
-def_ingest.mainapp(config['source_website'])
+# Check if the vector database exists
+if os.path.exists(vectordb_path+"/index.pkl"):
+    print(f"The file vector database is present")
+else:
+    # ingest data
+    def_ingest.clone_and_generate(config['website_repo'],website_generated_path, website_source_path)
+    def_ingest.mainapp(config['source_website'])
+
+qa_chain=ai_utils.setup_chain(vectordb_path)
 
 channel.basic_qos(prefetch_count=1)
 channel.basic_consume(queue=config['rabbitmqrequestqueue'], on_message_callback=on_request)

@@ -1,6 +1,10 @@
 #!/bin/bash
-rm -r -f ~/alkemio/website-source 
-git clone $1 ~/alkemio/website-source
-cd ~/alkemio/website-source
+# arguments:
+# 1: git repo
+# 2: website destination directory
+# 3: website source directory
+rm -r -f $3
+git clone $1 $3
+cd $3
 export PATH=$PATH:/usr/local/go/bin:/usr/local
-/usr/local/hugo --gc -b / -d $2 
+hugo --gc -b / -d $2 

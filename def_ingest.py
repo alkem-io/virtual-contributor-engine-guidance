@@ -14,20 +14,23 @@ import xml.etree.ElementTree as ET
 
 # define local configuration parameters
 local_path=os.getenv('AI_LOCAL_PATH')
+website_source_path=local_path+"/website-source"
+website_generated_path=local_path+"/website-generated"
+vectordb_path=local_path+"/local_index"
 
 
-def extract_urls_from_sitemap(file_path='sitemap.xml', base_directory='./'):
+def extract_urls_from_sitemap(sitemap_location='sitemap.xml', base_directory='./'):
     """
     Purpose:
         Read the sitemap.xml file and create a list of local html files to be read
     Args:
-        file_path: full path to sitemap.xml
+        sitemap_location: full path to sitemap.xml
         base_directory: path to directory containing local html files
     Returns:
         list of files to be retrieved
     """
     # Parse the XML directly from the file
-    tree = ET.parse(file_path)
+    tree = ET.parse(sitemap_location)
     root = tree.getroot()
 
     # Extract the URLs from the sitemap
@@ -57,17 +60,17 @@ def embed_text(texts, save_loc):
 
     docsearch.save_local(save_loc)
 
-def read_and_parse_html(local_path, source_website_url):
+def read_and_parse_html(local_source_path, source_website_url):
     """
     Purpose: read the target files from disk, transform html to readable text, remove sequnetial CR and space sequences, fix the document source address
              and split into chunks.
     Args:
-        local_path: path to directory containing local html files
+        local_source_path: path to directory containing local html files
         source_website_url: base url of source website
     Returns: list of parses and split doucments
     """
     # Get all links from the sitemaps
-    full_sitemap_list=extract_urls_from_sitemap(local_path+"/sitemap.xml", local_path)
+    full_sitemap_list=extract_urls_from_sitemap(website_generated_path+"/sitemap.xml", website_generated_path)
     print(full_sitemap_list)
 
     data = []
@@ -82,7 +85,7 @@ def read_and_parse_html(local_path, source_website_url):
         body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
 
         # remove the local directory from the source object
-        body_text.metadata['source'] = body_text.metadata['source'].replace(local_path, source_website_url)
+        body_text.metadata['source'] = body_text.metadata['source'].replace(local_source_path, source_website_url)
 
         data.append(body_text)
 
@@ -90,9 +93,9 @@ def read_and_parse_html(local_path, source_website_url):
     texts = text_splitter.split_documents(data)
     return texts
 
-def clone_and_generate(website_repo,local_path):
+def clone_and_generate(website_repo,destination_path, source_path):
     # clone repo and generate files
-    os.system(f"./generate-website.sh {website_repo} {local_path}")
+    os.system(f"./generate-website.sh {website_repo} {destination_path} {source_path}")
 
 def mainapp(source_website_url) -> None:
     """
@@ -108,13 +111,14 @@ def mainapp(source_website_url) -> None:
     f = open("ingestion_output.txt", "w")
 
     # read and parse the files
-    texts=read_and_parse_html(local_path, source_website_url)
+    texts=read_and_parse_html(website_generated_path, source_website_url)
 
     # Save embeddings to local_index
-    embed_text(texts, "local_index")
+    embed_text(texts, vectordb_path)
  
     f.write(str(texts))
     f.close()
 
-
-#mainapp(local_path)
+# only execute if this is the main program run (so not imported)
+if __name__ == "__main__":
+    mainapp(os.getenv('AI_SOURCE_WEBSITE'))
