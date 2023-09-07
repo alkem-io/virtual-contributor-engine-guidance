@@ -5,6 +5,7 @@ import ai_utils
 import def_ingest
 from dotenv import load_dotenv
 load_dotenv()
+from langchain.callbacks import get_openai_callback
 
 config = {
     "rabbitmq_host": os.getenv('RABBITMQ_HOST'),
@@ -48,8 +49,13 @@ def query(user_id, query, language_code):
     #    chat_history,
     #    user_data[user_id]['language']
     #)
+    with get_openai_callback() as cb:
+      llm_result=qa_chain({"question": query, "chat_history": chat_history, "language": user_data[user_id]['language']})
 
-    llm_result=qa_chain({"question": query, "chat_history": chat_history, "language": user_data[user_id]['language']})
+    print(f"\nTotal Tokens: {cb.total_tokens}")
+    print(f"\nPrompt Tokens: {cb.prompt_tokens}")
+    print(f"\nCompletion Tokens: {cb.completion_tokens}")
+    print(f"\nTotal Cost (USD): ${cb.total_cost}")
 
     print(f"\n\nLLM result: {llm_result}\n\n")
 
@@ -69,6 +75,10 @@ def query(user_id, query, language_code):
         "question": str(llm_result["question"])
         ,"answer": str(llm_result["answer"])
         ,"sources": str(llm_result["source_documents"])
+        ,"prompt_tokens": cb.prompt_tokens
+        ,"completion_token": cb.completion_tokens
+        ,"total_tokens": cb.total_tokens
+        ,"total_cost": cb.total_cost
     }
     )
 
@@ -84,6 +94,8 @@ def reset(user_id):
 def ingest(source_url, website_repo, destination_path, source_path):
     def_ingest.clone_and_generate(website_repo, destination_path, source_path)
     def_ingest.mainapp(source_url)
+
+
     return "Ingest function executed"
 
 def on_request(ch, method, props, body):
