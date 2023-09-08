@@ -74,25 +74,23 @@ QA_PROMPT = PromptTemplate(
 
 def setup_chain(db_path):
     generic_llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"], temperature=0, verbose=verbose_models)
-    question_generator = LLMChain(llm=generic_llm, prompt=custom_question_prompt, verbose=verbose_models )
 
     embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NAME"], chunk_size=1)
         
-
     vectorstore = FAISS.load_local(db_path, embeddings)
     retriever = vectorstore.as_retriever()
 
     chat_llm= AzureChatOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"], temperature=os.environ["AI_MODEL_TEMPERATURE"])
 
-    doc_chain = load_qa_chain(generic_llm, chain_type="stuff", prompt=QA_PROMPT, verbose=verbose_models)
-
-    conversation_chain = ConversationalRetrievalChain(retriever=retriever,
-                                                    combine_docs_chain=doc_chain,
-                                                        question_generator=question_generator,
-                                                        max_tokens_limit=max_token_limit,
-                                                        verbose = True,
-                                                        return_source_documents=return_source_document,
-                                                        return_generated_question=True
-                                                        ) 
+    conversation_chain=ConversationalRetrievalChain.from_llm(
+        llm=chat_llm,
+        retriever=retriever,
+        condense_question_prompt=custom_question_prompt,
+        chain_type="stuff",
+        verbose=verbose_models,
+        condense_question_llm=generic_llm,
+        return_source_documents=True,
+        combine_docs_chain_kwargs={"prompt": QA_PROMPT}
+    )
     return conversation_chain
   
