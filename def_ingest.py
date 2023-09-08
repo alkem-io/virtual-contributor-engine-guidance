@@ -14,8 +14,8 @@ import xml.etree.ElementTree as ET
 
 # define local configuration parameters
 local_path = os.getenv('AI_LOCAL_PATH')
-website_source_path = local_path+"/website-source"
-website_generated_path = local_path+"/website-generated"
+website_source_path = local_path+"/website/source"
+website_generated_path = local_path+"/website/generated"
 vectordb_path = local_path+"/local_index"
 
 

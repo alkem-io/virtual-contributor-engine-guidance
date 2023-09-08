@@ -3,7 +3,6 @@
 # 1: git repo
 # 2: website destination directory
 # 3: website source directory
-export DESTINATION=/home/alkemio/data/website/generated
 
 echo About to generate website
 echo ...cloning $1 into $3
