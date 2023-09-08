@@ -65,7 +65,7 @@ The Dockerfile has some self-explanatory configuration arguments.
 The following command can be used to start the container from the Docker CLI:
 `docker run --name guidance-engine -v /dev/shm:/dev/shm --env-file .env guidance-engine`
 where `.env` based on `.azure-template.env`
-Alternatively use `docker compose up -d`.
+Alternatively use `docker-compose up -d`.
 
 with:
 - `OPENAI_API_KEY`: a valid OpenAI API key

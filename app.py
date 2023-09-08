@@ -3,6 +3,7 @@ import pika
 import json
 import ai_utils
 import def_ingest
+import time
 from dotenv import load_dotenv
 load_dotenv()
 from langchain.callbacks import get_openai_callback
@@ -28,6 +29,7 @@ credentials = pika.PlainCredentials(config['rabbitmq_user'],
                                     config['rabbitmq_password'])
 parameters = pika.ConnectionParameters(host=config['rabbitmq_host'],
                                        credentials=credentials)
+print(f"\About to connect to RabbitMQ with params {config['rabbitmq_user']}: {config['rabbitmq_host']}\n")
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 

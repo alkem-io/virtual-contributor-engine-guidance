@@ -11,7 +11,7 @@ services:
           - ~/alkemio/data:/home/alkemio/data
       env_file:
         - .env
-      image: guidance-engine
+      image: alkemio/guidance-engine:v0.2.0p4
       networks:
         - alkemio
 

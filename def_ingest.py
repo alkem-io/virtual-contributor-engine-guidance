@@ -95,7 +95,7 @@ def read_and_parse_html(local_source_path, source_website_url):
 
 def clone_and_generate(website_repo,destination_path, source_path):
     # clone repo and generate files
-    os.system(f"./generate-website.sh {website_repo} {destination_path} {source_path}")
+    os.system(f"bash /app/generate-website.sh {website_repo} {destination_path} {source_path}")
 
 def mainapp(source_website_url) -> None:
     """
