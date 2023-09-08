@@ -19,8 +19,8 @@ config = {
 }
 
 local_path = config['local_path']
-website_source_path = local_path+"/website-source"
-website_generated_path = local_path+"/website-generated"
+website_source_path = local_path+'/website/source'
+website_generated_path = local_path+"/website/generated"
 vectordb_path = local_path+"/local_index"
 
 user_data = {}
