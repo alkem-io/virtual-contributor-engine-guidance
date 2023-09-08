@@ -8,4 +8,5 @@ rm -r -f $3
 git clone $1 $3
 cd $3
 export PATH=$PATH:/usr/local/go/bin:/usr/local
-hugo --gc -b / -d $2 
+# note docker on windows requires the bash statement to run this...
+bash hugo --gc -b / -d $2 

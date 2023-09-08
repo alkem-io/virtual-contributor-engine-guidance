@@ -11,16 +11,24 @@ services:
           - ~/alkemio/data:/home/alkemio/data
       env_file:
         - .env
-      image: alkemio/guidance-engine:v0.2.0p4
+      image: guidance-engine
+      depends_on:
+        rabbitmq:
+          condition: "service_healthy"
       networks:
         - alkemio
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: 'rabbitmq'
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 30s
+      timeout: 30s
+      retries: 10
     ports:
       - 5672:5672
-      - 15672:15672
+      - 8080:15672
 
     networks:
       - alkemio
