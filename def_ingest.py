@@ -13,10 +13,10 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 
 # define local configuration parameters
-local_path=os.getenv('AI_LOCAL_PATH')
-website_source_path=local_path+"/website-source"
-website_generated_path=local_path+"/website-generated"
-vectordb_path=local_path+"/local_index"
+local_path = os.getenv('AI_LOCAL_PATH')
+website_source_path = local_path+"/website-source"
+website_generated_path = local_path+"/website-generated"
+vectordb_path = local_path+"/local_index"
 
 
 def extract_urls_from_sitemap(sitemap_location='sitemap.xml', base_directory='./'):
@@ -49,7 +49,7 @@ def load_html_text(target_files):
 
     # Transform
     bs_transformer = BeautifulSoupTransformer()
-    docs_transformed = bs_transformer.transform_documents(data,tags_to_extract=["body"])
+    docs_transformed = bs_transformer.transform_documents(data, tags_to_extract=["body"])
 
     return docs_transformed
 
@@ -70,7 +70,7 @@ def read_and_parse_html(local_source_path, source_website_url):
     Returns: list of parses and split doucments
     """
     # Get all links from the sitemaps
-    full_sitemap_list=extract_urls_from_sitemap(website_generated_path+"/sitemap.xml", website_generated_path)
+    full_sitemap_list = extract_urls_from_sitemap(website_generated_path+"/sitemap.xml", website_generated_path)
     print(full_sitemap_list)
 
     data = []
@@ -78,8 +78,7 @@ def read_and_parse_html(local_source_path, source_website_url):
         loader = BSHTMLLoader(file_name)
         document = loader.load()
 
-        body_text=document[0]
-
+        body_text = document[0]
 
         # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
         body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
@@ -89,11 +88,11 @@ def read_and_parse_html(local_source_path, source_website_url):
 
         data.append(body_text)
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2500, chunk_overlap=0)
     texts = text_splitter.split_documents(data)
     return texts
 
-def clone_and_generate(website_repo,destination_path, source_path):
+def clone_and_generate(website_repo, destination_path, source_path):
     # clone repo and generate files
     os.system(f"bash /app/generate-website.sh {website_repo} {destination_path} {source_path}")
 
@@ -108,16 +107,17 @@ def mainapp(source_website_url) -> None:
     """
 
     # open file to check output
-    f = open("ingestion_output.txt", "w")
+    f = open(local_path+"/ingestion_output.txt", "w")
 
     # read and parse the files
-    texts=read_and_parse_html(website_generated_path, source_website_url)
+    texts = read_and_parse_html(website_generated_path, source_website_url)
 
     # Save embeddings to local_index
     embed_text(texts, vectordb_path)
- 
+
     f.write(str(texts))
     f.close()
+
 
 # only execute if this is the main program run (so not imported)
 if __name__ == "__main__":
