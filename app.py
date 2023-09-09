@@ -35,6 +35,22 @@ channel = connection.channel()
 
 channel.queue_declare(queue=config['rabbitmqrequestqueue'])
 
+# Check if the vector database exists
+if os.path.exists(vectordb_path+"/index.pkl"):
+    print(f"The file vector database is present")
+else:
+    # ingest data
+    def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
+    def_ingest.mainapp(config['source_website'])
+
+qa_chain = ai_utils.setup_chain(vectordb_path)
+
+channel.basic_qos(prefetch_count=1)
+channel.basic_consume(queue=config['rabbitmqrequestqueue'], on_message_callback=on_request)
+
+print("Waiting for RPC requests")
+channel.start_consuming()
+
 def query(user_id, query, language_code):
     print(f"\nQuery from user {user_id}: {query}\n")
 
@@ -127,20 +143,3 @@ def on_request(ch, method, props, body):
     print(f"Response sent for correlation_id: {props.correlation_id}")
     print(f"Response sent to: {props.reply_to}")
     print(f"response: {response}")
-
-
-# Check if the vector database exists
-if os.path.exists(vectordb_path+"/index.pkl"):
-    print(f"The file vector database is present")
-else:
-    # ingest data
-    def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
-    def_ingest.mainapp(config['source_website'])
-
-qa_chain = ai_utils.setup_chain(vectordb_path)
-
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(queue=config['rabbitmqrequestqueue'], on_message_callback=on_request)
-
-print("Waiting for RPC requests")
-channel.start_consuming()

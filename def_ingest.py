@@ -9,6 +9,9 @@ import xml.etree.ElementTree as ET
 from langchain.document_transformers import BeautifulSoupTransformer
 from langchain.document_loaders import BSHTMLLoader
 from bs4 import BeautifulSoup
+import os
+import shutil
+import subprocess
 
 import xml.etree.ElementTree as ET
 
@@ -16,10 +19,10 @@ import xml.etree.ElementTree as ET
 local_path = os.getenv('AI_LOCAL_PATH')
 website_source_path = local_path+"/website/source"
 website_generated_path = local_path+"/website/generated"
-vectordb_path = local_path+"/local_index"
+vectordb_path = local_path+"/vectordb"
 
 
-def extract_urls_from_sitemap(sitemap_location='sitemap.xml', base_directory='./'):
+def extract_urls_from_sitemap(base_directory):
     """
     Purpose:
         Read the sitemap.xml file and create a list of local html files to be read
@@ -29,13 +32,17 @@ def extract_urls_from_sitemap(sitemap_location='sitemap.xml', base_directory='./
     Returns:
         list of files to be retrieved
     """
+   
+    sitemap_file = base_directory + os.sep + "sitemap.xml"
+    print(f"Extracting urls using {sitemap_file}")
+
     # Parse the XML directly from the file
-    tree = ET.parse(sitemap_location)
+    tree = ET.parse(sitemap_file)
     root = tree.getroot()
 
     # Extract the URLs from the sitemap
     to_be_retieved = [
-        base_directory + elem.text + "index.html"
+        elem.text + "index.html"
         for elem in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
 
@@ -70,7 +77,7 @@ def read_and_parse_html(local_source_path, source_website_url):
     Returns: list of parses and split doucments
     """
     # Get all links from the sitemaps
-    full_sitemap_list = extract_urls_from_sitemap(website_generated_path+"/sitemap.xml", website_generated_path)
+    full_sitemap_list = extract_urls_from_sitemap(website_generated_path)
     print(full_sitemap_list)
 
     data = []
@@ -92,9 +99,36 @@ def read_and_parse_html(local_source_path, source_website_url):
     texts = text_splitter.split_documents(data)
     return texts
 
+def remove_and_recreate(dir_path):
+    try:
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+            print(f"Directory {dir_path} and its contents removed successfully.")
+        os.makedirs(dir_path)
+        print(f"...directory {dir_path} (re)created.")
+    except OSError as e:
+        print(f"Error: {e.strerror}")
+
 def clone_and_generate(website_repo, destination_path, source_path):
-    # clone repo and generate files
-    os.system(f"bash /app/generate-website.sh {website_repo} {destination_path} {source_path}")
+    print(f"About to generate website")
+    remove_and_recreate(source_path)
+    remove_and_recreate(destination_path)
+    print(f"...cloning repo")
+
+    clone_command = ['git', 'clone', website_repo, source_path]
+    result_clone = subprocess.run(clone_command, capture_output=True, text=True)
+    print(result_clone.stdout)
+
+    os.chdir(source_path)
+    print(f"...cloned, moved to directory: {os.getcwd()}")
+
+    env = os.environ.copy()
+    additional_path = '/usr/local/go/bin'
+    env["PATH"] = additional_path + os.pathsep + env["PATH"]
+    hugo_command = ['/usr/local/hugo', '--gc', '-b', '/', '-d', destination_path]   
+    result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
+    print(result_hugo.stdout)
+
 
 def mainapp(source_website_url) -> None:
     """
