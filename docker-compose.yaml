@@ -11,7 +11,7 @@ services:
           - ~/alkemio/data:/home/alkemio/data
       env_file:
         - .env
-      image: alkemio/guidance-engine:v0.2.0p29
+      image: alkemio/guidance-engine:v0.2.0p34
       depends_on:
         rabbitmq:
           condition: "service_healthy"

@@ -27,7 +27,6 @@ def extract_urls_from_sitemap(base_directory):
     Purpose:
         Read the sitemap.xml file and create a list of local html files to be read
     Args:
-        sitemap_location: full path to sitemap.xml
         base_directory: path to directory containing local html files
     Returns:
         list of files to be retrieved
@@ -42,10 +41,11 @@ def extract_urls_from_sitemap(base_directory):
 
     # Extract the URLs from the sitemap
     to_be_retieved = [
-        elem.text + "index.html"
+        base_directory + elem.text + "index.html"
         for elem in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
 
+    print(f"...sitemap as urls: {to_be_retieved[:5]}....") 
     return to_be_retieved
 
 
@@ -77,9 +77,12 @@ def read_and_parse_html(local_source_path, source_website_url):
     Returns: list of parses and split doucments
     """
     # Get all links from the sitemaps
+    print(f"generating html: {local_source_path}, {source_website_url}") 
     full_sitemap_list = extract_urls_from_sitemap(website_generated_path)
-    print(full_sitemap_list)
+    
+ 
 
+    os.chdir(local_source_path)
     data = []
     for file_name in full_sitemap_list:
         loader = BSHTMLLoader(file_name)
@@ -117,7 +120,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
 
     clone_command = ['git', 'clone', website_repo, source_path]
     result_clone = subprocess.run(clone_command, capture_output=True, text=True)
-    print(result_clone.stdout)
+    print(f"clone result: {result_clone.stdout}")
 
     os.chdir(source_path)
     print(f"...cloned, moved to directory: {os.getcwd()}")
@@ -127,7 +130,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
     env["PATH"] = additional_path + os.pathsep + env["PATH"]
     hugo_command = ['/usr/local/hugo', '--gc', '-b', '/', '-d', destination_path]   
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
-    print(result_hugo.stdout)
+    print(f"hugo result: {result_hugo.stdout}")
 
 
 def mainapp(source_website_url) -> None:
@@ -146,7 +149,7 @@ def mainapp(source_website_url) -> None:
     # read and parse the files
     texts = read_and_parse_html(website_generated_path, source_website_url)
 
-    # Save embeddings to local_index
+    # Save embeddings to vectordb
     embed_text(texts, vectordb_path)
 
     f.write(str(texts))
