@@ -123,8 +123,9 @@ def clone_and_generate(website_repo, destination_path, source_path):
     print(f"...cloned, moved to directory: {os.getcwd()}")
 
     env = os.environ.copy()
-    additional_path = '/usr/local/go/bin'
-    env["PATH"] = additional_path + os.pathsep + env["PATH"]
+    additional_path_go = '/usr/local/go/bin'
+    additional_path_usr = '/usr/local'
+    env["PATH"] = additional_path_go + os.pathsep + additional_path_usr + os.pathsep + env["PATH"]
     hugo_command = ['/usr/local/hugo', '--gc', '-b', '/', '-d', destination_path]   
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
     print(f"hugo result: {result_hugo.stdout}")
