@@ -4,7 +4,6 @@ import pika
 import json
 import ai_utils
 import def_ingest
-import time
 from dotenv import load_dotenv
 load_dotenv()
 

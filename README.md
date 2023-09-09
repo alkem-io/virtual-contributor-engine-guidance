@@ -59,7 +59,8 @@ There is a draft implementation for the interaction language of the model (this 
 
 ### Docker 
 The following command can be used to build the container from the Docker CLI (default architecture is amd64, so `--build-arg ARCHITECTURE=arm64` for amd64 builds):
-`docker build --build-arg ARCHITECTURE=arm64 --no-cache -t guidance-engine .`
+`docker build --build-arg ARCHITECTURE=arm64 --no-cache -t alkemio/guidance-engine:v0.2.0 .`
+`docker build--no-cache -t alkemio/guidance-engine:v0.2.0 .`
 The Dockerfile has some self-explanatory configuration arguments.
 
 The following command can be used to start the container from the Docker CLI:

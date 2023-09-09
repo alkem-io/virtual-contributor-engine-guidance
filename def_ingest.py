@@ -80,9 +80,6 @@ def read_and_parse_html(local_source_path, source_website_url):
     print(f"generating html: {local_source_path}, {source_website_url}") 
     full_sitemap_list = extract_urls_from_sitemap(website_generated_path)
     
- 
-
-    os.chdir(local_source_path)
     data = []
     for file_name in full_sitemap_list:
         loader = BSHTMLLoader(file_name)
