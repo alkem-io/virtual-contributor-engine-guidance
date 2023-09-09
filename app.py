@@ -22,7 +22,7 @@ local_path = config['local_path']
 website_source_path = local_path+'/website/source'
 website_generated_path = local_path+'/website/generated'
 vectordb_path = local_path+"/vectordb"
-generate_website = False
+generate_website = True
 
 user_data = {}
 
