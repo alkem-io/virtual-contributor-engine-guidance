@@ -46,6 +46,7 @@ The operation types are:
 The response is published in an auto-generated, exclusive, unnamed queue.
 
 There is a draft implementation for the interaction language of the model (this needs significant improvement). If no language code is specified, English will be assumed. Choices are:
+    'EN': 'English',
     'US': 'English',
     'UK': 'English',
     'FR': 'French',

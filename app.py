@@ -69,7 +69,7 @@ def query(user_id, query, language_code):
     print(f"new chat history {user_data[user_id]['chat_history']}")
 
     response = json.dumps({
-        "question": str(llm_result["question"]), "answer": str(translation), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_token": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
+        "question": str(llm_result["question"]), "answer": str(translation), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
     }
     )
 
