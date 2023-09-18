@@ -9,17 +9,10 @@ import xml.etree.ElementTree as ET
 from langchain.document_transformers import BeautifulSoupTransformer
 from langchain.document_loaders import BSHTMLLoader
 from bs4 import BeautifulSoup
-import os
 import shutil
 import subprocess
-
 import xml.etree.ElementTree as ET
-
-# define local configuration parameters
-local_path = os.getenv('AI_LOCAL_PATH')
-website_source_path = local_path+"/website/source"
-website_generated_path = local_path+"/website/generated"
-vectordb_path = local_path+"/vectordb"
+from config import local_path, website_generated_path, vectordb_path
 
 
 def extract_urls_from_sitemap(base_directory):
@@ -31,7 +24,7 @@ def extract_urls_from_sitemap(base_directory):
     Returns:
         list of files to be retrieved
     """
-   
+
     sitemap_file = base_directory + os.sep + "sitemap.xml"
     print(f"Extracting urls using {sitemap_file}")
 
@@ -45,7 +38,7 @@ def extract_urls_from_sitemap(base_directory):
         for elem in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
 
-    print(f"...sitemap as urls: {to_be_retieved[:5]}....") 
+    print(f"...sitemap as urls: {to_be_retieved[:5]}....")
     return to_be_retieved
 
 
@@ -77,9 +70,9 @@ def read_and_parse_html(local_source_path, source_website_url):
     Returns: list of parses and split doucments
     """
     # Get all links from the sitemaps
-    print(f"generating html: {local_source_path}, {source_website_url}") 
+    print(f"generating html: {local_source_path}, {source_website_url}")
     full_sitemap_list = extract_urls_from_sitemap(website_generated_path)
-    
+
     data = []
     for file_name in full_sitemap_list:
         loader = BSHTMLLoader(file_name)
@@ -113,20 +106,28 @@ def clone_and_generate(website_repo, destination_path, source_path):
     print(f"About to generate website")
     remove_and_recreate(source_path)
     remove_and_recreate(destination_path)
-    print(f"...cloning repo")
+    print(f"...cloning or updating repo")
 
-    clone_command = ['git', 'clone', website_repo, source_path]
-    result_clone = subprocess.run(clone_command, capture_output=True, text=True)
-    print(f"clone result: {result_clone.stdout}")
+    # Check if the repository already exists in the source_path
+    if os.path.exists(os.path.join(source_path, '.git')):
+        # Repository exists, perform a git pull to update it
+        git_pull_command = ['git', 'pull', 'origin', 'main']  # Modify branch name as needed
+        result_pull = subprocess.run(git_pull_command, cwd=source_path, capture_output=True, text=True)
+        print(f"git pull result: {result_pull.stdout}")
+    else:
+        # Repository doesn't exist, perform a git clone
+        clone_command = ['git', 'clone', website_repo, source_path]
+        result_clone = subprocess.run(clone_command, capture_output=True, text=True)
+        print(f"git clone result: {result_clone.stdout}")
 
     os.chdir(source_path)
-    print(f"...cloned, moved to directory: {os.getcwd()}")
+    print(f"...cloned/updated, moved to directory: {os.getcwd()}")
 
     env = os.environ.copy()
     additional_path_go = '/usr/local/go/bin'
     additional_path_usr = '/usr/local'
     env["PATH"] = additional_path_go + os.pathsep + additional_path_usr + os.pathsep + env["PATH"]
-    hugo_command = ['/usr/local/hugo', '--gc', '-b', '/', '-d', destination_path]   
+    hugo_command = ['/usr/local/hugo', '--gc', '-b', '/', '-d', destination_path]
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
     print(f"hugo result: {result_hugo.stdout}")
 

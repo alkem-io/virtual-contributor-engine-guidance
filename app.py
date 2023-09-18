@@ -4,24 +4,7 @@ import pika
 import json
 import ai_utils
 import def_ingest
-from dotenv import load_dotenv
-load_dotenv()
-
-config = {
-    "rabbitmq_host": os.getenv('RABBITMQ_HOST'),
-    "rabbitmq_user": os.getenv('RABBITMQ_USER'),
-    "rabbitmq_password": os.getenv('RABBITMQ_PASSWORD'),
-    "rabbitmqrequestqueue": "alkemio-chat-guidance",
-    "source_website": os.getenv('AI_SOURCE_WEBSITE'),
-    "website_repo": os.getenv('AI_WEBSITE_REPO'),
-    "local_path": os.getenv('AI_LOCAL_PATH')
-}
-
-local_path = config['local_path']
-website_source_path = local_path+'/website/source'
-website_generated_path = local_path+'/website/generated'
-vectordb_path = local_path+"/vectordb"
-generate_website = True
+from config import config, website_source_path, website_generated_path, vectordb_path, generate_website
 
 user_data = {}
 
@@ -40,7 +23,7 @@ if os.path.exists(vectordb_path+"/index.pkl"):
     print(f"The file vector database is present")
 else:
     # ingest data
-    if generate_website: 
+    if generate_website:
         def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
     def_ingest.mainapp(config['source_website'])
 
@@ -64,7 +47,7 @@ def query(user_id, query, language_code):
     # )
     with get_openai_callback() as cb:
         llm_result = qa_chain({"question": query, "chat_history": chat_history})
-        translation=ai_utils.translate_answer(llm_result['answer'],user_data[user_id]['language'],chat_history)
+        translation = ai_utils.translate_answer(llm_result['answer'], user_data[user_id]['language'], chat_history)
 
     print(f"\nTotal Tokens: {cb.total_tokens}")
     print(f"\nPrompt Tokens: {cb.prompt_tokens}")
@@ -86,7 +69,7 @@ def query(user_id, query, language_code):
     print(f"new chat history {user_data[user_id]['chat_history']}")
 
     response = json.dumps({
-        "question": str(llm_result["question"]), "answer": str(translation), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_token": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
+        "question": str(llm_result["question"]), "answer": str(translation), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
     }
     )
 

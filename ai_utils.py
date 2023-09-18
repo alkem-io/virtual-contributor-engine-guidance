@@ -20,6 +20,7 @@ return_source_document = True
 
 # Define a dictionary containing country codes as keys and related languages as values
 language_mapping = {
+    'EN': 'English',
     'US': 'English',
     'UK': 'English',
     'FR': 'French',
@@ -81,13 +82,15 @@ QA_PROMPT = PromptTemplate(
 )
 
 def translate_answer(answer, language, chat_history):
-    translate_llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"], temperature=0, verbose=verbose_models)
+    translate_llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
+                                temperature=0, verbose=verbose_models)
     prompt = translation_prompt.format(answer=answer, language=language, chat_history=chat_history)
     return translate_llm(prompt)
 
 
 def setup_chain(db_path):
-    generic_llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"], temperature=0, verbose=verbose_models)
+    generic_llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
+                              temperature=0, verbose=verbose_models)
 
     embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NAME"], chunk_size=1)
 
