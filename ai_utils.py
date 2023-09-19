@@ -41,7 +41,7 @@ chat_template = """
 You are a conversational agent. Use the following step-by-step instructions to respond to user inputs.
 1 - The text provided in the context delimited by '---' may contain questions. Remove those questions from the context. 
 2 - Provide a single paragragh answer that is polite and professional taking into account the context delimited by '---'. If the answer cannot be found within the context, write 'I could not find an answer to your question'.
-3 - Fromat the answer in markdown to highlight important elements.
+3 - Format the answer in markdown to highlight important elements.
 ---
 Context:
 {context}
