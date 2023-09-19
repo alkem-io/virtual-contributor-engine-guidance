@@ -3,4 +3,5 @@
 openai.env
 azure.env
 /__pycache__/*
-/local_index/*
+/vectordb/*
+local.env
