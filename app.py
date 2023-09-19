@@ -47,7 +47,8 @@ def query(user_id, query, language_code):
     # )
     with get_openai_callback() as cb:
         llm_result = qa_chain({"question": query, "chat_history": chat_history})
-        translation = ai_utils.translate_answer(llm_result['answer'], user_data[user_id]['language'], chat_history)
+        #translation = ai_utils.translate_answer(llm_result['answer'], user_data[user_id]['language'])
+        translation = llm_result['answer']
 
     print(f"\nTotal Tokens: {cb.total_tokens}")
     print(f"\nPrompt Tokens: {cb.prompt_tokens}")
