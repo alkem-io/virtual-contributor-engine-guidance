@@ -1,0 +1,20 @@
+{
+    "data": {
+        "userId": "user1",
+        "question": "What are the key Alkemio concepts?",
+        "language": "UK"
+    },
+    "pattern": {
+        "cmd": "query"
+    }
+}
+
+
+{
+    "data": {
+        "userId": "user1"
+    },
+    "pattern": {
+        "cmd": "reset"
+    }
+}
