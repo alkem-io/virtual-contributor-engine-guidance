@@ -13,7 +13,7 @@ import os
 
 # define internal configuration parameters
 # token limit for retrieval chain
-max_token_limit = 2500
+max_token_limit = 4000
 # verbose output for LLMs
 verbose_models = True
 # doews chain return the source documents?
@@ -42,14 +42,16 @@ def get_language_by_code(language_code):
 chat_template = """
 You are a conversational agent. Use the following step-by-step instructions to respond to user inputs.
 1 - The text provided in the context delimited by triple pluses may contain questions. Remove those questions from the context. 
-2 - Provide a single paragragh answer that is polite and professional taking into account the context and the chat history, both delimited by triple pluses. If the answer cannot be found within the context, write 'I could not find an answer to your question'.
+2 - The text provided in the chat history delimited by triple hashes provides the early part of the chat. Read it well so you can take it into account in answering the question.
+3 - Provide a single paragragh answer that is polite and professional taking into account the context delimited by triple pluses. If the answer cannot be found within the context, write 'I could not find an answer to your question'.
 +++
 Context:
 {context}
 +++
+###
 Chat history:
 {chat_history}
-+++
+###
 Question: {question}
 """
 

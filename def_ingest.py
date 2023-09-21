@@ -7,14 +7,14 @@ import xml.etree.ElementTree as ET
 
 
 from langchain.document_transformers import BeautifulSoupTransformer
-from langchain.document_loaders import BSHTMLLoader
-from bs4 import BeautifulSoup
+from langchain.document_loaders import TextLoader
+
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from config import local_path, website_generated_path, vectordb_path
 
-chunk_size=2500
+chunk_size=2000
 
 def extract_urls_from_sitemap(base_directory):
     """
@@ -43,18 +43,6 @@ def extract_urls_from_sitemap(base_directory):
     return to_be_retieved
 
 
-def load_html_text(target_files):
-
-    loader = BSHTMLLoader(target_files)
-    data = loader.load()
-
-    # Transform
-    bs_transformer = BeautifulSoupTransformer()
-    docs_transformed = bs_transformer.transform_documents(data, tags_to_extract=["body"])
-
-    return docs_transformed
-
-
 def embed_text(texts, save_loc):
     embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NAME"], chunk_size=1)
     docsearch = FAISS.from_documents(texts, embeddings)
@@ -70,19 +58,22 @@ def read_and_parse_html(local_source_path, source_website_url):
         source_website_url: base url of source website
     Returns: list of parses and split doucments
     """
+    # Transform
+    bs_transformer = BeautifulSoupTransformer()
+    
     # Get all links from the sitemaps
     print(f"generating html: {local_source_path}, {source_website_url}")
     full_sitemap_list = extract_urls_from_sitemap(website_generated_path)
 
     data = []
     for file_name in full_sitemap_list:
-        loader = BSHTMLLoader(file_name)
+        loader = TextLoader(file_name)
         document = loader.load()
-
-        body_text = document[0]
+        doc_transformed = bs_transformer.transform_documents(document, tags_to_extract=["p", "article", "title", "h1"], remove_lines=True)
+        body_text = doc_transformed[0]
 
         # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
-        body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
+        #body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
 
         # remove the local directory from the source object
         body_text.metadata['source'] = body_text.metadata['source'].replace(local_source_path, source_website_url)
@@ -91,6 +82,7 @@ def read_and_parse_html(local_source_path, source_website_url):
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
     texts = text_splitter.split_documents(data)
+    print(texts)
     return texts
 
 def remove_and_recreate(dir_path):
