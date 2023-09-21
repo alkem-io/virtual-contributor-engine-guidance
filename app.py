@@ -22,6 +22,7 @@ def query(user_id, query, language_code):
     print(f"\nQuery from user {user_id}: {query}\n")
 
     if user_id not in user_data:
+        user_chain[user_id]=ai_utils.setup_chain()
         reset(user_id)
         chat_history=[]
 
@@ -32,7 +33,13 @@ def query(user_id, query, language_code):
 
     with get_openai_callback() as cb:
         llm_result = user_chain[user_id]({"question": query, "chat_history": chat_history})
-        translation = llm_result['answer']
+        answer = llm_result['answer']
+
+
+    # clean up the document sources to avoid sending too much information over.
+    sources = [doc.metadata['source'] for doc in llm_result['source_documents']]
+
+
 
     print(f"\nTotal Tokens: {cb.total_tokens}")
     print(f"\nPrompt Tokens: {cb.prompt_tokens}")
@@ -40,7 +47,8 @@ def query(user_id, query, language_code):
     print(f"\nTotal Cost (USD): ${cb.total_cost}")
 
     print(f"\n\nLLM result: {llm_result}\n\n")
-    print(f"\n\ntranslation result: {translation}\n\n")
+    print(f"\n\nanswer: {answer}\n\n")
+    print(f"\n\nsources: {sources}\n\ n")
 
     formatted_messages = (
         f"Human:'{llm_result['question']}'",
@@ -53,7 +61,7 @@ def query(user_id, query, language_code):
 
     print(f"new chat history {user_data[user_id]['chat_history']}")
     response = json.dumps({
-        "question": str(llm_result["question"]), "answer": str(translation), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
+        "question": str(llm_result["question"]), "answer": str(answer), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
     }
     )
 
@@ -64,7 +72,6 @@ def reset(user_id):
     user_data[user_id] = {
         'chat_history': []
     }
-    user_chain[user_id]=ai_utils.setup_chain()
     return "Reset function executed"
 
 def ingest(source_url, website_repo, destination_path, source_path):
