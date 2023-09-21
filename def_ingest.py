@@ -14,6 +14,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 from config import local_path, website_generated_path, vectordb_path
 
+chunk_size=2500
 
 def extract_urls_from_sitemap(base_directory):
     """
@@ -88,7 +89,7 @@ def read_and_parse_html(local_source_path, source_website_url):
 
         data.append(body_text)
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
     texts = text_splitter.split_documents(data)
     return texts
 

@@ -5,7 +5,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chat_models import AzureChatOpenAI
 from langchain.chains import ConversationalRetrievalChain, LLMChain
 from langchain.chains.question_answering import load_qa_chain
-from langchain.chains.conversational_retrieval.prompts import CONDENSE_QUESTION_PROMPT, QA_PROMPT
+from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
 import def_ingest
 from config import config, website_source_path, website_generated_path, vectordb_path, generate_website
 
@@ -13,7 +13,7 @@ import os
 
 # define internal configuration parameters
 # token limit for retrieval chain
-max_token_limit = 2000
+max_token_limit = 2500
 # verbose output for LLMs
 verbose_models = True
 # doews chain return the source documents?
@@ -116,13 +116,13 @@ chat_llm = AzureChatOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"],
 doc_chain = load_qa_chain(generic_llm, chain_type="stuff", prompt=QA_PROMPT, verbose=verbose_models)
 
 def translate_answer(answer, language):
-    translate_llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
+    translate_llm = AzureChatOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
                                 temperature=0, verbose=verbose_models)
     prompt = translation_prompt.format(answer=answer, language=language)
     return translate_llm(prompt)
 
 
-def setup_chain(user_memory):
+def setup_chain():
 
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=chat_llm,
@@ -134,16 +134,5 @@ def setup_chain(user_memory):
         return_source_documents=return_source_documents,
         combine_docs_chain_kwargs={"prompt": QA_PROMPT}
     )
-
-
-    #conversation_chain = ConversationalRetrievalChain(retriever=retriever,
-    #                                                combine_docs_chain=doc_chain,
-    #                                                    question_generator=question_generator,
-    #                                                    max_tokens_limit=max_token_limit,
-    #                                                    verbose = True,
-    #                                                    memory=user_memory,
-    #                                                    return_source_documents=return_source_documents,
-    #                                                    return_generated_question=False,
-    #                                                    )
 
     return conversation_chain

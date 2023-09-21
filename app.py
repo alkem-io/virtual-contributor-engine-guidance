@@ -1,14 +1,11 @@
 from langchain.callbacks import get_openai_callback
-import os
 import pika
 import json
 import ai_utils
+import def_ingest
 from config import config, website_source_path, website_generated_path, vectordb_path, generate_website
-from langchain.memory import ConversationSummaryMemory, ChatMessageHistory, ConversationSummaryBufferMemory
-from langchain.llms import AzureOpenAI
 
 user_data = {}
-user_history = {}
 user_chain = {}
 
 credentials = pika.PlainCredentials(config['rabbitmq_user'],
@@ -21,23 +18,12 @@ channel = connection.channel()
 
 channel.queue_declare(queue=config['rabbitmqrequestqueue'])
 
-
-# define memory
-memory_llm=AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
-                                temperature=0, verbose=True)
-
-
 def query(user_id, query, language_code):
     print(f"\nQuery from user {user_id}: {query}\n")
 
     if user_id not in user_data:
         reset(user_id)
         chat_history=[]
-        summary=""
-    else:
-        summary=user_data[user_id]['memory'].predict_new_summary(user_data[user_id]['memory'].chat_memory.messages, existing_summary = user_data[user_id]['summary'])
-        print(f"\nnew summary: {summary}\n\n")
-        user_data[user_id]['summary'] = summary
 
     user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
 
@@ -45,7 +31,7 @@ def query(user_id, query, language_code):
     chat_history = user_data[user_id]['chat_history']
 
     with get_openai_callback() as cb:
-        llm_result = user_chain[user_id]({"question": query, "chat_history": chat_history, "history": summary})
+        llm_result = user_chain[user_id]({"question": query, "chat_history": chat_history})
         translation = llm_result['answer']
 
     print(f"\nTotal Tokens: {cb.total_tokens}")
@@ -61,10 +47,6 @@ def query(user_id, query, language_code):
         f"AI:'{llm_result['answer']}'"
     )
     user_data[user_id]['chat_history'].append(formatted_messages)
-    
-    #user_history[user_id].add_user_message(query)
-    #user_history[user_id].add_ai_message(llm_result['answer'])
-    user_data[user_id]['memory'].save_context({"input": query}, {"output": llm_result['answer']})
 
     # only keep the last 3 entries of that chat history to avoid exceeding the token limit.
     user_data[user_id]['chat_history'] = user_data[user_id]['chat_history'][-3:]
@@ -78,14 +60,11 @@ def query(user_id, query, language_code):
     return response
 
 def reset(user_id):
-    #user_history[user_id] = ChatMessageHistory()
-    #user_history[user_id].clear()
+
     user_data[user_id] = {
-        'chat_history': [],
-        'memory': ConversationSummaryMemory(llm=memory_llm, memory_key="chat_history", return_messages = False),
-        'summary': ""
+        'chat_history': []
     }
-    user_chain[user_id]=ai_utils.setup_chain(user_data[user_id]['memory'])
+    user_chain[user_id]=ai_utils.setup_chain()
     return "Reset function executed"
 
 def ingest(source_url, website_repo, destination_path, source_path):
