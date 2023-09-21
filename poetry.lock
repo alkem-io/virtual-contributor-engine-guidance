@@ -511,18 +511,18 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.0.294"
+version = "0.0.297"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = ">=3.8.1,<4.0"
 files = [
-    {file = "langchain-0.0.294-py3-none-any.whl", hash = "sha256:03389b1f64e20d288aafb8ff9937e8f21ebaf785397f0d4d9ccacf4e4c7b277e"},
-    {file = "langchain-0.0.294.tar.gz", hash = "sha256:e4aa2a3a60aa65ae747c411c5201e5208b14a5c62008315ce29c9b6de29e97f7"},
+    {file = "langchain-0.0.297-py3-none-any.whl", hash = "sha256:118141ebba33038d56c5362817ea64afa328f9b00fcedffea27afed70a0d675b"},
+    {file = "langchain-0.0.297.tar.gz", hash = "sha256:d914cf7f98ade3d9172f0c25b2f8a2cc86ffc8b0d3eab7dfa82023ddcdb8ba4d"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.8.3,<4.0.0"
-dataclasses-json = ">=0.5.7,<0.6.0"
+dataclasses-json = ">=0.5.7,<0.7"
 langsmith = ">=0.0.38,<0.1.0"
 numexpr = ">=2.8.4,<3.0.0"
 numpy = ">=1,<2"
@@ -1679,4 +1679,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "b71d9a08e084f60fb338623d49d9699122a9db64e8439f81cd8c0f2124203fdb"
+content-hash = "b9987aab04f622a524dbd3d97cb52f0bbf51d98ecd6a79a9cb4a6704c3e56112"

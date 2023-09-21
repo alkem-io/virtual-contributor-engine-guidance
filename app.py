@@ -3,10 +3,13 @@ import os
 import pika
 import json
 import ai_utils
-import def_ingest
 from config import config, website_source_path, website_generated_path, vectordb_path, generate_website
+from langchain.memory import ConversationSummaryMemory, ChatMessageHistory, ConversationSummaryBufferMemory
+from langchain.llms import AzureOpenAI
 
 user_data = {}
+user_history = {}
+user_chain = {}
 
 credentials = pika.PlainCredentials(config['rabbitmq_user'],
                                     config['rabbitmq_password'])
@@ -18,36 +21,31 @@ channel = connection.channel()
 
 channel.queue_declare(queue=config['rabbitmqrequestqueue'])
 
-# Check if the vector database exists
-if os.path.exists(vectordb_path+"/index.pkl"):
-    print(f"The file vector database is present")
-else:
-    # ingest data
-    if generate_website:
-        def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
-    def_ingest.mainapp(config['source_website'])
 
-qa_chain = ai_utils.setup_chain(vectordb_path)
+# define memory
+memory_llm=AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
+                                temperature=0, verbose=True)
+
 
 def query(user_id, query, language_code):
     print(f"\nQuery from user {user_id}: {query}\n")
 
     if user_id not in user_data:
         reset(user_id)
+        chat_history=[]
+        summary=""
+    else:
+        summary=user_data[user_id]['memory'].predict_new_summary(user_data[user_id]['memory'].chat_memory.messages, existing_summary = user_data[user_id]['summary'])
+        print(f"\nnew summary: {summary}\n\n")
+        user_data[user_id]['summary'] = summary
 
     user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
 
     print(f"\nlanguage: {user_data[user_id]['language']}\n")
     chat_history = user_data[user_id]['chat_history']
 
-    # llm_result =ai_utils.qa_chain(
-    #    query,
-    #    chat_history,
-    #    user_data[user_id]['language']
-    # )
     with get_openai_callback() as cb:
-        llm_result = qa_chain({"question": query, "chat_history": chat_history})
-        #translation = ai_utils.translate_answer(llm_result['answer'], user_data[user_id]['language'])
+        llm_result = user_chain[user_id]({"question": query, "chat_history": chat_history, "history": summary})
         translation = llm_result['answer']
 
     print(f"\nTotal Tokens: {cb.total_tokens}")
@@ -63,12 +61,15 @@ def query(user_id, query, language_code):
         f"AI:'{llm_result['answer']}'"
     )
     user_data[user_id]['chat_history'].append(formatted_messages)
+    
+    #user_history[user_id].add_user_message(query)
+    #user_history[user_id].add_ai_message(llm_result['answer'])
+    user_data[user_id]['memory'].save_context({"input": query}, {"output": llm_result['answer']})
 
-    # only keep the last 3 entires of that chat history to avoid exceeding the token limit.
+    # only keep the last 3 entries of that chat history to avoid exceeding the token limit.
     user_data[user_id]['chat_history'] = user_data[user_id]['chat_history'][-3:]
 
     print(f"new chat history {user_data[user_id]['chat_history']}")
-
     response = json.dumps({
         "question": str(llm_result["question"]), "answer": str(translation), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
     }
@@ -77,10 +78,14 @@ def query(user_id, query, language_code):
     return response
 
 def reset(user_id):
+    #user_history[user_id] = ChatMessageHistory()
+    #user_history[user_id].clear()
     user_data[user_id] = {
-        'chat_history': []
+        'chat_history': [],
+        'memory': ConversationSummaryMemory(llm=memory_llm, memory_key="chat_history", return_messages = False),
+        'summary': ""
     }
-
+    user_chain[user_id]=ai_utils.setup_chain(user_data[user_id]['memory'])
     return "Reset function executed"
 
 def ingest(source_url, website_repo, destination_path, source_path):

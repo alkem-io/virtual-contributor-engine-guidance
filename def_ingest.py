@@ -88,7 +88,7 @@ def read_and_parse_html(local_source_path, source_website_url):
 
         data.append(body_text)
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2500, chunk_overlap=0)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
     texts = text_splitter.split_documents(data)
     return texts
 
@@ -127,7 +127,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
     additional_path_go = '/usr/local/go/bin'
     additional_path_usr = '/usr/local'
     env["PATH"] = additional_path_go + os.pathsep + additional_path_usr + os.pathsep + env["PATH"]
-    hugo_command = ['/usr/local/hugo', '--gc', '-b', '/', '-d', destination_path]
+    hugo_command = ['hugo', '--gc', '-b', '/', '-d', destination_path]
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
     print(f"hugo result: {result_hugo.stdout}")
 
