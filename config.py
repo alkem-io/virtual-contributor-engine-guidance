@@ -17,3 +17,5 @@ website_source_path = local_path + '/website/source'
 website_generated_path = local_path + '/website/generated'
 vectordb_path = local_path + "/vectordb"
 generate_website = True
+
+LOG_LEVEL = 'DEBUG'  # Possible values: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'

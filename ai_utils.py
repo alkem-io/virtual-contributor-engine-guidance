@@ -6,17 +6,43 @@ from langchain.chat_models import AzureChatOpenAI
 from langchain.chains import ConversationalRetrievalChain, LLMChain
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
+import logging
 import def_ingest
-from config import config, website_source_path, website_generated_path, vectordb_path, generate_website
+from config import config, website_source_path, website_generated_path, vectordb_path, local_path, generate_website, LOG_LEVEL
 
 import os
+
+# configure logging
+logger = logging.getLogger(__name__)
+
+# Create handlers
+c_handler = logging.StreamHandler()
+f_handler = logging.FileHandler(local_path+'/app.log')
+
+c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
+f_handler.setLevel(logging.ERROR)
+
+# Create formatters and add them to handlers
+c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+c_handler.setFormatter(c_format)
+f_handler.setFormatter(f_format)
+
+# Add handlers to the logger
+logger.addHandler(c_handler)
+logger.addHandler(f_handler)
+
+# verbose output for LLMs
+if LOG_LEVEL=="DEBUG":
+    verbose_models = True
+else:
+    verbose_models = False
 
 # define internal configuration parameters
 # token limit for retrieval chain
 max_token_limit = 4000
-# verbose output for LLMs
-verbose_models = True
-# doews chain return the source documents?
+
+# does chain return the source documents?
 return_source_documents = True
 
 
@@ -101,7 +127,7 @@ embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NA
 
 # Check if the vector database exists
 if os.path.exists(vectordb_path+"/index.pkl"):
-    print(f"The file vector database is present")
+    logger.info(f"The file vector database is present")
 else:
     # ingest data
     if generate_website:
