@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-langchain = "^0.0.297"
+langchain = "^0.0.300"
 pika = "^1.3.2"
 python-dotenv = "^1.0.0"
 faiss-cpu = "^1.7.4"
