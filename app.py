@@ -73,7 +73,7 @@ def query(user_id, query, language_code):
 
     formatted_messages = (
         f"Human:'{llm_result['question']}'",
-        f"AI:'{llm_result['answer']}'"
+        f"Assistant:'{llm_result['answer']}'"
     )
     user_data[user_id]['chat_history'].append(formatted_messages)
 

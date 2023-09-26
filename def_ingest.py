@@ -88,8 +88,13 @@ def read_and_parse_html(local_source_path, source_website_url):
     data = []
     for file_name in full_sitemap_list:
         loader = TextLoader(file_name)
+        # ignore url's with /tag/ as they do not contain relevant info.
+        if '/tag/' in file_name:
+            logger.info(f"'/tag/' found, not ingesting {file_name}\n")
+            continue
         document = loader.load()
-        doc_transformed = bs_transformer.transform_documents(document, tags_to_extract=["p", "article", "title", "h1"], remove_lines=True)
+        # note h5 and h6 tags for our website contain a lot of irrelevant metadata
+        doc_transformed = bs_transformer.transform_documents(document, tags_to_extract=["p", "article", "title", "h1"], unwanted_tags=["h5", "h6"], remove_lines=True)
         body_text = doc_transformed[0]
 
         # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
@@ -120,18 +125,23 @@ def clone_and_generate(website_repo, destination_path, source_path):
     remove_and_recreate(source_path)
     remove_and_recreate(destination_path)
     logger.info(f"...cloning or updating repo")
-
+    branch = "main"
+    git_switch_command = ['git', 'switch', branch]
     # Check if the repository already exists in the source_path
     if os.path.exists(os.path.join(source_path, '.git')):
         # Repository exists, perform a git pull to update it
-        git_pull_command = ['git', 'pull', 'origin', 'main']  # Modify branch name as needed
+        git_pull_command = ['git', 'pull', 'origin', branch]  # Modify branch name as needed
         result_pull = subprocess.run(git_pull_command, cwd=source_path, capture_output=True, text=True)
         logger.info(f"git pull result: {result_pull.stdout}")
+        result_switch = subprocess.run(git_switch_command, cwd=source_path, capture_output=True, text=True)
+        logger.info(f"git switch result: {result_switch.stdout}")
     else:
         # Repository doesn't exist, perform a git clone
         clone_command = ['git', 'clone', website_repo, source_path]
         result_clone = subprocess.run(clone_command, capture_output=True, text=True)
         logger.info(f"git clone result: {result_clone.stdout}")
+        result_switch = subprocess.run(git_switch_command, cwd=source_path, capture_output=True, text=True)
+        logger.info(f"git switch result: {result_switch.stdout}")
 
     os.chdir(source_path)
     logger.info(f"...cloned/updated, moved to directory: {os.getcwd()}")
