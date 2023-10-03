@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "alkemio-guidance-engine"
-version = "0.1.2"
+version = "0.2.1"
 description = "Alkemio Generative AI Guidance Engne"
 authors = ["Alkemio Foundation <info@alkem.io>"]
 license = "EUPL-1.2"
