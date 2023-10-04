@@ -8,7 +8,7 @@ ARG GO_VERSION=1.21.1
 ARG HUGO_VERSION=0.118.2
 ARG ARCHITECTURE=amd64
 
-# install git, go, hugo, and gcc
+# install git, go and hugo
 RUN  apt update && apt upgrade -y && apt install -y git wget
 RUN wget https://go.dev/dl/go${GO_VERSION}.linux-${ARCHITECTURE}.tar.gz && tar -C /usr/local -xzf go${GO_VERSION}.linux-${ARCHITECTURE}.tar.gz 
 RUN export PATH=$PATH:/usr/local/go/bin:/usr/local && go version
