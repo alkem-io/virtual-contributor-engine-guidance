@@ -5,7 +5,7 @@ FROM python:3.11-slim-bookworm
 WORKDIR /app
 
 ARG GO_VERSION=1.21.1
-ARG HUGO_VERSION=0.118.2
+ARG HUGO_VERSION=0.120.4
 ARG ARCHITECTURE=amd64
 
 # install git, go and hugo

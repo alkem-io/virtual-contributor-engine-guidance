@@ -8,7 +8,7 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
 import logging
 import def_ingest
-from config import config, website_source_path, website_generated_path, vectordb_path, local_path, generate_website, LOG_LEVEL
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL
 
 import os
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Create handlers
 c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(local_path+'/app.log')
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'/app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.ERROR)
@@ -132,7 +132,8 @@ else:
     # ingest data
     if generate_website:
         def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
-    def_ingest.mainapp(config['source_website'])
+        def_ingest.clone_and_generate(config['website_repo2'], website_generated_path2, website_source_path2)
+    def_ingest.mainapp(config['source_website'], config['source_website2'])
 
 vectorstore = FAISS.load_local(vectordb_path, embeddings)
 retriever = vectorstore.as_retriever()

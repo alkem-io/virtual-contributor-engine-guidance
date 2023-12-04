@@ -12,14 +12,14 @@ from langchain.document_loaders import TextLoader
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
-from config import local_path, website_generated_path, vectordb_path, LOG_LEVEL
+from config import local_path, website_generated_path, website_generated_path2, vectordb_path, website_source_path, website_source_path2, github_user, github_pat, github_pat, LOG_LEVEL
 
 # configure logging
 logger = logging.getLogger(__name__)
 
 # Create handlers
 c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(local_path+'/app.log')
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'/app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.ERROR)
@@ -69,13 +69,14 @@ def embed_text(texts, save_loc):
 
     docsearch.save_local(save_loc)
 
-def read_and_parse_html(local_source_path, source_website_url):
+def read_and_parse_html(local_source_path, source_website_url, website_generated_path):
     """
     Purpose: read the target files from disk, transform html to readable text, remove sequnetial CR and space sequences, fix the document source address
              and split into chunks.
     Args:
         local_source_path: path to directory containing local html files
         source_website_url: base url of source website
+        website_generated_path: path to directory containing generated html files
     Returns: list of parses and split doucments
     """
     # Transform
@@ -101,7 +102,7 @@ def read_and_parse_html(local_source_path, source_website_url):
         #body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
 
         # remove the local directory from the source object
-        body_text.metadata['source'] = body_text.metadata['source'].replace(local_source_path, source_website_url)
+        body_text.metadata['source'] = body_text.metadata['source'].replace(website_generated_path, source_website_url)
 
         data.append(body_text)
 
@@ -137,7 +138,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
         logger.info(f"git switch result: {result_switch.stdout}")
     else:
         # Repository doesn't exist, perform a git clone
-        clone_command = ['git', 'clone', website_repo, source_path]
+        clone_command = ['git', 'clone', "https://" + github_user + ":" + github_pat + "@" + website_repo, source_path]
         result_clone = subprocess.run(clone_command, capture_output=True, text=True)
         logger.info(f"git clone result: {result_clone.stdout}")
         result_switch = subprocess.run(git_switch_command, cwd=source_path, capture_output=True, text=True)
@@ -155,10 +156,10 @@ def clone_and_generate(website_repo, destination_path, source_path):
     logger.error(f"hugo result: {result_hugo.stdout}")
 
 
-def mainapp(source_website_url) -> None:
+def mainapp(source_website_url, source_website_url2) -> None:
     """
     Purpose:
-        ingest the trnaformed website contents into a vector database in presized chunks.
+        ingest the transformed website contents into a vector database in presized chunks.
     Args:
         source_website_url: full url of source website, used to return the proper link for the source documents.
     Returns:
@@ -169,7 +170,9 @@ def mainapp(source_website_url) -> None:
     f = open(local_path+"/ingestion_output.txt", "w")
 
     # read and parse the files
-    texts = read_and_parse_html(website_generated_path, source_website_url)
+    # local_source_path, source_website_url, website_generated_path
+    texts = read_and_parse_html(website_source_path, source_website_url, website_generated_path)
+    texts += read_and_parse_html(website_source_path2, source_website_url2, website_generated_path2)
 
     # Save embeddings to vectordb
     embed_text(texts, vectordb_path)
@@ -180,4 +183,4 @@ def mainapp(source_website_url) -> None:
 
 # only execute if this is the main program run (so not imported)
 if __name__ == "__main__":
-    mainapp(os.getenv('AI_SOURCE_WEBSITE'))
+    mainapp(os.getenv('AI_SOURCE_WEBSITE'),os.getenv('AI_SOURCE_WEBSITE2'))
