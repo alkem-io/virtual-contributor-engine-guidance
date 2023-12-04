@@ -61,7 +61,7 @@ There is a draft implementation for the interaction language of the model (this 
 ### Docker 
 The following command can be used to build the container from the Docker CLI (default architecture is amd64, so `--build-arg ARCHITECTURE=arm64` for amd64 builds):
 `docker build --build-arg ARCHITECTURE=arm64 --no-cache -t alkemio/guidance-engine:v0.2.0 .`
-`docker build--no-cache -t alkemio/guidance-engine:v0.2.0 .`
+`docker build --no-cache -t alkemio/guidance-engine:v0.2.0 .`
 The Dockerfile has some self-explanatory configuration arguments.
 
 The following command can be used to start the container from the Docker CLI:
@@ -81,9 +81,11 @@ with:
 - `AI_MODEL_NAME`: the model name in Azure
 - `AI_DEPLOYMENT_NAME`: the AI gpt model deployment name in Azure
 - `AI_EMBEDDINGS_DEPLOYMENT_NAME`: the AI embeddings model deployment name in Azure
-- `AI_SOURCE_WEBSITE`: the URL of the website that contains the source data (for references only)
+- `AI_SOURCE_WEBSITE`: the URL of the foundation website that contains the source data (for references only)
+- `AI_SOURCE_WEBSITE2`: the URL of the welcome website that contains the source data (for references only)
 - `AI_LOCAL_PATH`: local file path for storing data
-- `AI_WEBSITE_REPO`: url of the Git repository containing the website source data, based on Hugo
+- `AI_WEBSITE_REPO`: url of the Git repository containing the foundation website source data, based on Hugo - without https
+- `AI_WEBSITE_REPO2`: url of the Git repository containing the welcome website source data, based on Hugo - without https
 
 You can find sample values in `.azure-template.env` and `.openai-template.env`. Configure them and create `.env` file with the updated settings.
 
