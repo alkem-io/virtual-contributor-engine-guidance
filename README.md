@@ -60,8 +60,8 @@ There is a draft implementation for the interaction language of the model (this 
 
 ### Docker 
 The following command can be used to build the container from the Docker CLI (default architecture is amd64, so `--build-arg ARCHITECTURE=arm64` for amd64 builds):
-`docker build --build-arg ARCHITECTURE=arm64 --no-cache -t alkemio/guidance-engine:v0.2.0 .`
-`docker build--no-cache -t alkemio/guidance-engine:v0.2.0 .`
+`docker build --build-arg ARCHITECTURE=arm64 --no-cache -t alkemio/guidance-engine:v0.4.0 .`
+`docker build --no-cache -t alkemio/guidance-engine:v0.2.0 .`
 The Dockerfile has some self-explanatory configuration arguments.
 
 The following command can be used to start the container from the Docker CLI:
@@ -70,22 +70,28 @@ where `.env` based on `.azure-template.env`
 Alternatively use `docker-compose up -d`.
 
 with:
-- `OPENAI_API_KEY`: a valid OpenAI API key
-- `OPENAI_API_TYPE`: a valid OpenAI API type. For Azure, the value is `azure`
+- `AZURE_OPENAI_API_KEY`: a valid OpenAI API key
 - `OPENAI_API_VERSION`: a valid Azure OpenAI version. At the moment of writing, latest is `2023-05-15`
-- `OPENAI_API_BASE`: a valid Azure OpenAI base URL, e.g. `https://{your-azure-resource-name}.openai.azure.com/`
+- `AZURE_OPENAI_ENDPOINT`: a valid Azure OpenAI base URL, e.g. `https://{your-azure-resource-name}.openai.azure.com/`
 - `RABBITMQ_HOST`: the RabbitMQ host name
 - `RABBITMQ_USER`: the RabbitMQ user
 - `RABBITMQ_PASSWORD`: the RabbitMQ password
 - `AI_MODEL_TEMPERATURE`: the `temperature` of the model, use value between 0 and 1. 1 means more randomized answer, closer to 0 - a stricter one
-- `AI_MODEL_NAME`: the model name in Azure
-- `AI_DEPLOYMENT_NAME`: the AI gpt model deployment name in Azure
-- `AI_EMBEDDINGS_DEPLOYMENT_NAME`: the AI embeddings model deployment name in Azure
-- `AI_SOURCE_WEBSITE`: the URL of the website that contains the source data (for references only)
+- `LLM_DEPLOYMENT_NAME`: the AI gpt model deployment name in Azure
+- `EMBEDDINGS_DEPLOYMENT_NAME`: the AI embeddings model deployment name in Azure
+- `AI_SOURCE_WEBSITE`: the URL of the foundation website that contains the source data (for references only)
+- `AI_SOURCE_WEBSITE2`: the URL of the welcome website that contains the source data (for references only)
 - `AI_LOCAL_PATH`: local file path for storing data
-- `AI_WEBSITE_REPO`: url of the Git repository containing the website source data, based on Hugo
+- `AI_WEBSITE_REPO`: url of the Git repository containing the foundation website source data, based on Hugo - without https
+- `AI_WEBSITE_REPO2`: url of the Git repository containing the welcome website source data, based on Hugo - without https
+- `AI_GITHUB_USER` : Github user used for cloning website repos
+- `AI_GITHUB_PAT` : Personal access token for cloning website repos
+- `LANGCHAIN_TRACING_V2` : enable Langchain tracing
+- `LANGCHAIN_ENDPOINT` : Langchain tracing endpoint (e.g. "https://api.smith.langchain.com")
+- `LANGCHAIN_API_KEY` : Langchain tracing API key
+- `LANGCHAIN_PROJECT` : Langchain tracing project name (e.g. "guidance-engine")
 
-You can find sample values in `.azure-template.env` and `.openai-template.env`. Configure them and create `.env` file with the updated settings.
+You can find sample values in `.azure-template.env`. Configure them and create `.env` file with the updated settings.
 
 ### Python & Poetry
 The project requires Python & Poetry installed. The minimum version dependencies can be found at `pyproject.toml`.
@@ -102,9 +108,7 @@ The following tasks are still outstanding:
 - assess overall quality and performance of the model and make improvements as and when required.
 - assess the need to summarize the chat history to avoid exceeding the prompt token limit.
 - update the yaml manifest.
-- add error handling.
 - perform extensive testing, in particular in multi-user scenarios.
-- look at improvements of the ingestion. As a minimum the service engine should not consume queries whilst the ingestion is ongoing, as thatwill lead to errors.
-- look at the use of `temperature` for the `QARetrievalChain`. It is not so obvious how this is handled.
+- look at improvements of the ingestion. As a minimum the service engine should not consume queries whilst the ingestion is ongoing, as that will lead to errors.
 - look at the possibility to implement reinforcement learning.
-- return the actual LLM costs and token usage for queries.
+
