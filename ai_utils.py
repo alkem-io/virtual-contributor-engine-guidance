@@ -1,4 +1,4 @@
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings import AzureOpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.llms import AzureOpenAI
 from langchain.prompts import PromptTemplate
@@ -8,7 +8,7 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
 import logging
 import def_ingest
-from config import config, website_source_path, website_generated_path, vectordb_path, local_path, generate_website, LOG_LEVEL
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL
 
 import os
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Create handlers
 c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(local_path+'/app.log')
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.ERROR)
@@ -118,12 +118,18 @@ QA_PROMPT = PromptTemplate(
     template=chat_template, input_variables=["question", "context", "chat_history"]
 )
 
-generic_llm = AzureOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
+
+generic_llm = AzureOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
                             temperature=0, verbose=verbose_models)
 
 question_generator = LLMChain(llm=generic_llm, prompt=custom_question_prompt, verbose=verbose_models)
 
-embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NAME"], chunk_size=1)
+
+embeddings = AzureOpenAIEmbeddings(
+    azure_deployment=config['embeddings_deployment_name'],
+    openai_api_version=config['openai_api_version'],
+    chunk_size=1
+)
 
 # Check if the vector database exists
 if os.path.exists(vectordb_path+"/index.pkl"):
@@ -132,19 +138,20 @@ else:
     # ingest data
     if generate_website:
         def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
-    def_ingest.mainapp(config['source_website'])
+        def_ingest.clone_and_generate(config['website_repo2'], website_generated_path2, website_source_path2)
+    def_ingest.mainapp(config['source_website'], config['source_website2'])
 
 vectorstore = FAISS.load_local(vectordb_path, embeddings)
 retriever = vectorstore.as_retriever()
 
-chat_llm = AzureChatOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"],
-                            model_name=os.environ["AI_MODEL_NAME"], temperature=os.environ["AI_MODEL_TEMPERATURE"],
+chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
+                            temperature=os.environ["AI_MODEL_TEMPERATURE"],
                             max_tokens=max_token_limit)
 
 doc_chain = load_qa_chain(generic_llm, chain_type="stuff", prompt=QA_PROMPT, verbose=verbose_models)
 
 def translate_answer(answer, language):
-    translate_llm = AzureChatOpenAI(deployment_name=os.environ["AI_DEPLOYMENT_NAME"], model_name=os.environ["AI_MODEL_NAME"],
+    translate_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
                                 temperature=0, verbose=verbose_models)
     prompt = translation_prompt.format(answer=answer, language=language)
     return translate_llm(prompt)

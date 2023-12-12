@@ -5,3 +5,4 @@ azure.env
 /__pycache__/*
 /vectordb/*
 local.env
+docker-compose-local.yaml
