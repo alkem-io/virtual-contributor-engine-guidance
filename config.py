@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 config = {
+    "llm_deployment_name": os.getenv('LLM_DEPLOYMENT_NAME'),
+    "embeddings_deployment_name": os.getenv('EMBEDDINGS_DEPLOYMENT_NAME'),
+    "openai_api_version": os.getenv('OPENAI_API_VERSION'),
     "rabbitmq_host": os.getenv('RABBITMQ_HOST'),
     "rabbitmq_user": os.getenv('RABBITMQ_USER'),
     "rabbitmq_password": os.getenv('RABBITMQ_PASSWORD'),
