@@ -1,6 +1,6 @@
 import os
 import logging
-from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings import AzureOpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 import xml.etree.ElementTree as ET
@@ -12,14 +12,14 @@ from langchain.document_loaders import TextLoader
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
-from config import local_path, website_generated_path, website_generated_path2, vectordb_path, website_source_path, website_source_path2, github_user, github_pat, github_pat, LOG_LEVEL
+from config import config, local_path, website_generated_path, website_generated_path2, vectordb_path, website_source_path, website_source_path2, github_user, github_pat, github_pat, LOG_LEVEL
 
 # configure logging
 logger = logging.getLogger(__name__)
 
 # Create handlers
 c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'/app.log'))
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.ERROR)
@@ -64,7 +64,11 @@ def extract_urls_from_sitemap(base_directory):
 
 
 def embed_text(texts, save_loc):
-    embeddings = OpenAIEmbeddings(deployment=os.environ["AI_EMBEDDINGS_DEPLOYMENT_NAME"], chunk_size=1)
+    embeddings = AzureOpenAIEmbeddings(
+    azure_deployment=config['embeddings_deployment_name'],
+    openai_api_version=config['openai_api_version'],
+    chunk_size=1
+)
     docsearch = FAISS.from_documents(texts, embeddings)
 
     docsearch.save_local(save_loc)

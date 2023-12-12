@@ -4,8 +4,8 @@ FROM python:3.11-slim-bookworm
 # Set the working directory in the container to /app
 WORKDIR /app
 
-ARG GO_VERSION=1.21.1
-ARG HUGO_VERSION=0.120.4
+ARG GO_VERSION=1.21.5
+ARG HUGO_VERSION=0.121.1
 ARG ARCHITECTURE=amd64
 
 # install git, go and hugo
