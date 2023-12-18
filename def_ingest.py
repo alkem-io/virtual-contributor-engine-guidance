@@ -1,5 +1,7 @@
 import os
 import logging
+import sys
+import io
 from langchain.embeddings import AzureOpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
@@ -16,13 +18,16 @@ from config import config, local_path, website_generated_path, website_generated
 
 # configure logging
 logger = logging.getLogger(__name__)
+assert LOG_LEVEL in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
+
 
 # Create handlers
-c_handler = logging.StreamHandler()
+c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
 f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
-f_handler.setLevel(logging.ERROR)
+f_handler.setLevel(logging.WARNING)
 
 # Create formatters and add them to handlers
 c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -33,6 +38,8 @@ f_handler.setFormatter(f_format)
 # Add handlers to the logger
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
+
+logger.info(f"log level ingest: {LOG_LEVEL}")
 
 chunk_size=2000
 
@@ -157,7 +164,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
     env["PATH"] = additional_path_go + os.pathsep + additional_path_usr + os.pathsep + env["PATH"]
     hugo_command = ['hugo', '--gc', '-b', '/', '-d', destination_path]
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
-    logger.error(f"hugo result: {result_hugo.stdout}")
+    logger.info(f"hugo result: {result_hugo.stdout}")
 
 
 def mainapp(source_website_url, source_website_url2) -> None:

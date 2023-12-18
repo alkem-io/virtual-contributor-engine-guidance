@@ -7,6 +7,8 @@ from langchain.chains import ConversationalRetrievalChain, LLMChain
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
 import logging
+import sys
+import io
 import def_ingest
 from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL
 
@@ -14,13 +16,16 @@ import os
 
 # configure logging
 logger = logging.getLogger(__name__)
+assert LOG_LEVEL in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
+
 
 # Create handlers
-c_handler = logging.StreamHandler()
+c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
 f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
-f_handler.setLevel(logging.ERROR)
+f_handler.setLevel(logging.WARNING)
 
 # Create formatters and add them to handlers
 c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -31,6 +36,8 @@ f_handler.setFormatter(f_format)
 # Add handlers to the logger
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
+
+logger.info(f"log level ai_utils: {LOG_LEVEL}")
 
 # verbose output for LLMs
 if LOG_LEVEL=="DEBUG":

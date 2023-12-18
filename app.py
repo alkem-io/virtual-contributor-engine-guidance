@@ -3,15 +3,21 @@ import pika
 import json
 import ai_utils
 import logging
+import sys
+import io
+import os
 import def_ingest
 from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, generate_website, local_path, LOG_LEVEL
 
 # configure logging
 logger = logging.getLogger(__name__)
+assert LOG_LEVEL in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
+
 
 # Create handlers
-c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(local_path+'/app.log')
+c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.WARNING)
@@ -26,6 +32,8 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
+logger.info(f"log level app: {LOG_LEVEL}")
+
 user_data = {}
 user_chain = {}
 
@@ -33,7 +41,7 @@ credentials = pika.PlainCredentials(config['rabbitmq_user'],
                                     config['rabbitmq_password'])
 parameters = pika.ConnectionParameters(host=config['rabbitmq_host'],
                                        credentials=credentials)
-logger.info(f"\About to connect to RabbitMQ with params {config['rabbitmq_user']}: {config['rabbitmq_host']}\n")
+logger.info(f"About to connect to RabbitMQ with params {config['rabbitmq_user']}: {config['rabbitmq_host']}\n")
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 
