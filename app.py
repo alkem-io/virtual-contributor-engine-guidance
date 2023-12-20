@@ -83,14 +83,6 @@ def query(user_id, query, language_code):
     logger.info(f"\n\nanswer: {answer}\n\n")
     logger.debug(f"\n\nsources: {sources}\n\ n")
 
-    #formatted_messages = (
-    #    f"Human:'{llm_result['question']}'",
-    #    f"Assistant:'{llm_result['answer']}'"
-    #)
-    #user_data[user_id]['chat_history'].append(formatted_messages)
-
-    # only keep the last 3 entries of that chat history to avoid exceeding the token limit.
-    #user_data[user_id]['chat_history'] = user_data[user_id]['chat_history'][-3:]
     user_data[user_id]['chat_history'].save_context({"question": query}, {"answer": answer.content})
     logger.debug(f"new chat history {user_data[user_id]['chat_history']}\n")
     response = json.dumps({
