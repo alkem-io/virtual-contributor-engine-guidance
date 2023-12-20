@@ -1,4 +1,5 @@
 from langchain.callbacks import get_openai_callback
+from langchain.memory import ConversationBufferMemory
 import pika
 import json
 import ai_utils
@@ -51,24 +52,27 @@ def query(user_id, query, language_code):
     logger.info(f"\nQuery from user {user_id}: {query}\n")
 
     if user_id not in user_data:
-        user_chain[user_id]=ai_utils.setup_chain()
+        user_data[user_id] = {}
+        user_data[user_id]['chat_history'] = ConversationBufferMemory(return_messages=True, output_key="answer", input_key="question")
+        #user_chain[user_id]=ai_utils.setup_chain()
         reset(user_id)
-        chat_history=[]
+        #chat_history=[]
 
     user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
 
     logger.debug(f"\nlanguage: {user_data[user_id]['language']}\n")
-    chat_history = user_data[user_id]['chat_history']
+    #chat_history = user_data[user_id]['chat_history']
+
+
 
     with get_openai_callback() as cb:
-        llm_result = user_chain[user_id]({"question": query, "chat_history": chat_history})
+        llm_result = ai_utils.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
         answer = llm_result['answer']
 
 
     # clean up the document sources to avoid sending too much information over.
     sources = [doc.metadata['source'] for doc in llm_result['source_documents']]
-
-
+    logger.debug(f"\n\nsources: {sources}\n\n")
 
     logger.info(f"\nTotal Tokens: {cb.total_tokens}")
     logger.info(f"\nPrompt Tokens: {cb.prompt_tokens}")
@@ -79,28 +83,26 @@ def query(user_id, query, language_code):
     logger.info(f"\n\nanswer: {answer}\n\n")
     logger.debug(f"\n\nsources: {sources}\n\ n")
 
-    formatted_messages = (
-        f"Human:'{llm_result['question']}'",
-        f"Assistant:'{llm_result['answer']}'"
-    )
-    user_data[user_id]['chat_history'].append(formatted_messages)
+    #formatted_messages = (
+    #    f"Human:'{llm_result['question']}'",
+    #    f"Assistant:'{llm_result['answer']}'"
+    #)
+    #user_data[user_id]['chat_history'].append(formatted_messages)
 
     # only keep the last 3 entries of that chat history to avoid exceeding the token limit.
-    user_data[user_id]['chat_history'] = user_data[user_id]['chat_history'][-3:]
-
-    logger.debug(f"new chat history {user_data[user_id]['chat_history']}")
+    #user_data[user_id]['chat_history'] = user_data[user_id]['chat_history'][-3:]
+    user_data[user_id]['chat_history'].save_context({"question": query}, {"answer": answer.content})
+    logger.debug(f"new chat history {user_data[user_id]['chat_history']}\n")
     response = json.dumps({
-        "question": str(llm_result["question"]), "answer": str(answer), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
+        "question": query, "answer": str(answer), "sources": sources, "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
     }
     )
 
     return response
 
 def reset(user_id):
+    user_data[user_id]['chat_history'].clear()
 
-    user_data[user_id] = {
-        'chat_history': []
-    }
     return "Reset function executed"
 
 def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):

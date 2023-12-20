@@ -1,16 +1,20 @@
 from langchain.embeddings import AzureOpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.llms import AzureOpenAI
-from langchain.prompts import PromptTemplate
+from langchain.prompts.prompt import PromptTemplate
+from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import AzureChatOpenAI
-from langchain.chains import ConversationalRetrievalChain, LLMChain
-from langchain.chains.question_answering import load_qa_chain
-from langchain.chains.conversational_retrieval.prompts import QA_PROMPT
+from langchain.schema import StrOutputParser
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+from langchain.schema import format_document
+from langchain_core.messages import get_buffer_string
+
+from operator import itemgetter
 import logging
 import sys
 import io
 import def_ingest
-from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL, max_token_limit
 
 import os
 
@@ -46,8 +50,6 @@ else:
     verbose_models = False
 
 # define internal configuration parameters
-# token limit for retrieval chain
-max_token_limit = 4000
 
 # does chain return the source documents?
 return_source_documents = True
@@ -73,64 +75,39 @@ def get_language_by_code(language_code):
 
 
 chat_template = """
-You are a conversational agent. Use the following step-by-step instructions to respond to user inputs.
+You are a friendly conversational agent. Use the following step-by-step instructions to respond to user inputs.
 1 - The text provided in the context delimited by triple pluses may contain questions. Remove those questions from the context. 
-2 - The text provided in the chat history delimited by triple hashes provides the early part of the chat. Read it well so you can take it into account in answering the question.
-3 - Provide a single paragragh answer that is polite and professional taking into account the context delimited by triple pluses. If the answer cannot be found within the context, write 'I could not find an answer to your question'.
+2 - Provide an up to three paragraghs answer that is accurate and exthausive, taking into account the context delimited by triple pluses.
+    If the answer cannot be found within the context, write 'I could not find an answer to your question'.
+3 - Only return the answer from step 2, do not show any code or additional information.
+4 - If the question is in a different language than English, translate the question to English before answering.
+5 - Answer the question in the {language} language. 
 +++
 Context:
 {context}
 +++
-###
-Chat history:
-{chat_history}
-###
 Question: {question}
 """
 
-custom_question_template = """"
-Combine the chat history and follow up question into a standalone question. 
+condense_question_template = """"
+Combine the chat history delimited by triple pluses and follow-up question into a single standalone question that does justice to the follow-up question. Do only return the standalone question, do not return any other information.
+
 +++
 Chat History: {chat_history}
 +++
-Follow up question: {question}
-+++
+Follow-up question: {question}
+---
 Standalone question:
 """
 
-translate_template = """"
-Act as a professional translator. Use the following step-by-step instructions:
-1: assess in what language input below delimited by triple pluses is written.
-2. carry out one of tasks A or B below:
-A: if the input language is different from {language} then translate the input below delimited by triple pluses to natural {language} language, maintaining tone of voice and length
-B: if the input language is the same as {language} there is no need for translation, simply return the original input below delimited by triple pluses as the answer.
-3. Only return the answer from step 2, do not show any code or additional information.
-+++
-input:
-{answer}
-+++
-Translated input:
-"""
 
-custom_question_prompt = PromptTemplate(
-    template=custom_question_template, input_variables=["chat_history", "question"]
-)
+condense_question_prompt = PromptTemplate.from_template(condense_question_template)
 
-translation_prompt = PromptTemplate(
-    template=translate_template, input_variables=["language", "answer"]
-)
-
-# prompt to be used by retrieval chain, note this is the default prompt name, so nowhere assigned
-QA_PROMPT = PromptTemplate(
-    template=chat_template, input_variables=["question", "context", "chat_history"]
-)
+chat_prompt = ChatPromptTemplate.from_template(chat_template)
 
 
 generic_llm = AzureOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
                             temperature=0, verbose=verbose_models)
-
-question_generator = LLMChain(llm=generic_llm, prompt=custom_question_prompt, verbose=verbose_models)
-
 
 embeddings = AzureOpenAIEmbeddings(
     azure_deployment=config['embeddings_deployment_name'],
@@ -149,32 +126,96 @@ else:
     def_ingest.mainapp(config['source_website'], config['source_website2'])
 
 vectorstore = FAISS.load_local(vectordb_path, embeddings)
-retriever = vectorstore.as_retriever()
+retriever = vectorstore.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": .5})
 
 chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
                             temperature=os.environ["AI_MODEL_TEMPERATURE"],
-                            max_tokens=max_token_limit)
+                            max_tokens=max_token_limit, verbose=verbose_models)
 
-doc_chain = load_qa_chain(generic_llm, chain_type="stuff", prompt=QA_PROMPT, verbose=verbose_models)
+condense_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
+                            temperature=0,
+                            verbose=verbose_models)
 
-def translate_answer(answer, language):
-    translate_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                                temperature=0, verbose=verbose_models)
-    prompt = translation_prompt.format(answer=answer, language=language)
-    return translate_llm(prompt)
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+DEFAULT_DOCUMENT_PROMPT = PromptTemplate.from_template(template="{page_content}")
+
+def _combine_documents(
+    docs, document_prompt=DEFAULT_DOCUMENT_PROMPT, document_separator="\n\n"
+):
+    doc_strings = [format_document(doc, document_prompt) for doc in docs]
+    return document_separator.join(doc_strings)
 
 
-def setup_chain():
+def query_chain(question, language, chat_history):
 
-    conversation_chain = ConversationalRetrievalChain.from_llm(
-        llm=chat_llm,
-        retriever=retriever,
-        condense_question_prompt=custom_question_prompt,
-        chain_type="stuff",
-        verbose=verbose_models,
-        condense_question_llm=generic_llm,
-        return_source_documents=return_source_documents,
-        combine_docs_chain_kwargs={"prompt": QA_PROMPT}
-    )
+    # check whether the chat history is empty
+    if  chat_history.buffer == []:
+        first_call = True
+    else:
+        first_call = False
 
-    return conversation_chain
+    logger.debug(f"first call: {first_call}\n")
+    logger.debug(f"chat history: {chat_history.buffer}\n")
+
+    # First we add a step to load memory
+    # This adds a "memory" key to the input object
+    loaded_memory = RunnablePassthrough.assign(
+        chat_history=RunnableLambda(chat_history.load_memory_variables) | itemgetter("history"),
+    )    
+
+    logger.debug(f"loaded memory {loaded_memory}\n")
+    logger.debug(f"chat history {chat_history}\n")
+
+    # Now we calculate the standalone question if the chat_history is not empty
+    if not first_call:
+        standalone_question = {
+            "standalone_question": {
+                "question": lambda x: x["question"],
+                "chat_history": lambda x: get_buffer_string(x["chat_history"]),
+            }
+            | condense_question_prompt
+            | condense_llm
+            | StrOutputParser(),
+        }
+
+        logger.debug(f"standalone question: {standalone_question}\n")
+
+        # Now we retrieve the documents
+        retrieved_documents = {
+            "docs": itemgetter("standalone_question") | retriever,
+            "question": lambda x: x["standalone_question"],
+        }
+    else:
+        retrieved_documents = {
+            "docs": itemgetter("question") | retriever,
+            "question": lambda x: x["question"],
+        }
+
+    # Now we construct the inputs for the final prompt
+    final_inputs = {
+        "context": lambda x: _combine_documents(x["docs"]),
+        "question": itemgetter("question"),
+        "language": lambda x: language['language'],
+    }
+
+    logger.debug(f"final inputs: {final_inputs}\n")
+
+    # And finally, we do the part that returns the answers
+    answer = {
+        "answer": final_inputs | chat_prompt | chat_llm,
+        "docs": itemgetter("docs"),
+    }
+
+    logger.debug(f"answer {answer}\n")
+
+    # And now we put it all together!
+    if first_call:
+        final_chain = loaded_memory | retrieved_documents| answer
+    else:
+        final_chain = loaded_memory | standalone_question | retrieved_documents | answer
+
+    logger.debug(f"final chain {final_chain}\n")
+    result = final_chain.invoke(question)
+    return {'answer': result['answer'], 'source_documents': result['docs']}

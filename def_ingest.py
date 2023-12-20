@@ -2,9 +2,11 @@ import os
 import logging
 import sys
 import io
+import re
 from langchain.embeddings import AzureOpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
+from langchain.callbacks import get_openai_callback
 import xml.etree.ElementTree as ET
 
 
@@ -14,7 +16,7 @@ from langchain.document_loaders import TextLoader
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
-from config import config, local_path, website_generated_path, website_generated_path2, vectordb_path, website_source_path, website_source_path2, github_user, github_pat, github_pat, LOG_LEVEL
+from config import config, local_path, website_generated_path, website_generated_path2, vectordb_path, website_source_path, website_source_path2, github_user, github_pat, github_pat, LOG_LEVEL, chunk_size
 
 # configure logging
 logger = logging.getLogger(__name__)
@@ -41,7 +43,6 @@ logger.addHandler(f_handler)
 
 logger.info(f"log level ingest: {LOG_LEVEL}")
 
-chunk_size=2000
 
 def extract_urls_from_sitemap(base_directory):
     """
@@ -100,9 +101,9 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
     data = []
     for file_name in full_sitemap_list:
         loader = TextLoader(file_name)
-        # ignore url's with /tag/ as they do not contain relevant info.
-        if '/tag/' in file_name:
-            logger.info(f"'/tag/' found, not ingesting {file_name}\n")
+        # ignore url's with /tag/ or /category/ as they do not contain relevant info.
+        if '/tag/' in file_name or '/category/' in file_name or '/help/index' in file_name:
+            logger.info(f"exclusion found, not ingesting {file_name}\n")
             continue
         document = loader.load()
         # note h5 and h6 tags for our website contain a lot of irrelevant metadata
@@ -110,16 +111,18 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
         body_text = doc_transformed[0]
 
         # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
-        #body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
+        body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
 
         # remove the local directory from the source object
         body_text.metadata['source'] = body_text.metadata['source'].replace(website_generated_path, source_website_url)
 
-        data.append(body_text)
+        if len(body_text.page_content) > 100:
+            data.append(body_text)
+        else:
+            logger.info(f"document too small, not adding: {body_text.page_content}\n")
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_size/5)
     texts = text_splitter.split_documents(data)
-    logger.debug(texts)
     return texts
 
 def remove_and_recreate(dir_path):
@@ -186,8 +189,9 @@ def mainapp(source_website_url, source_website_url2) -> None:
     texts += read_and_parse_html(website_source_path2, source_website_url2, website_generated_path2)
 
     # Save embeddings to vectordb
-    embed_text(texts, vectordb_path)
-
+    with get_openai_callback() as cb:
+        embed_text(texts, vectordb_path)
+    logger.info(f"\nEmbedding costs: {cb.total_cost}")
     f.write(str(texts))
     f.close()
 
