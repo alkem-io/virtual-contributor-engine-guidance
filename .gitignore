@@ -6,3 +6,4 @@ azure.env
 /vectordb/*
 local.env
 docker-compose-local.yaml
+.DS_Store

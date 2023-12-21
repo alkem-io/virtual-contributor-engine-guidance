@@ -8,6 +8,7 @@ from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain.schema import format_document
 from langchain_core.messages import get_buffer_string
+from langchain_core.runnables import RunnableBranch
 
 from operator import itemgetter
 import logging
@@ -156,6 +157,9 @@ def query_chain(question, language, chat_history):
     else:
         first_call = False
 
+    # add first_call to the question
+    question.update({"first_call": first_call})
+
     logger.debug(f"first call: {first_call}\n")
     logger.debug(f"chat history: {chat_history.buffer}\n")
 
@@ -169,29 +173,32 @@ def query_chain(question, language, chat_history):
     logger.debug(f"chat history {chat_history}\n")
 
     # Now we calculate the standalone question if the chat_history is not empty
-    if not first_call:
-        standalone_question = {
-            "standalone_question": {
-                "question": lambda x: x["question"],
-                "chat_history": lambda x: get_buffer_string(x["chat_history"]),
-            }
-            | condense_question_prompt
-            | condense_llm
-            | StrOutputParser(),
-        }
-
-        logger.debug(f"standalone question: {standalone_question}\n")
-
-        # Now we retrieve the documents
-        retrieved_documents = {
-            "docs": itemgetter("standalone_question") | retriever,
-            "question": lambda x: x["standalone_question"],
-        }
-    else:
-        retrieved_documents = {
-            "docs": itemgetter("question") | retriever,
+    standalone_question = {
+        "standalone_question": {
             "question": lambda x: x["question"],
+            "chat_history": lambda x: get_buffer_string(x["chat_history"]),
         }
+        | condense_question_prompt
+        | condense_llm
+        | StrOutputParser(),
+    }
+
+    # pass the question directly on the first call in a chat sequence of the chatbot
+    direct_question = {
+        "question": lambda x: x["question"],
+    }
+    # Now we retrieve the documents
+    # in case it is the first call (chat history empty)
+    retrieved_documents = {
+        "docs": itemgetter("question") | retriever,
+        "question": lambda x: x["question"],
+    }
+    # or when the chat history is not empty, rephrase the question taking into account the chat history
+    retrieved_documents_sa = {
+        "docs": itemgetter("standalone_question") | retriever,
+        "question": lambda x: x["standalone_question"],
+    }
+
 
     # Now we construct the inputs for the final prompt
     final_inputs = {
@@ -200,21 +207,18 @@ def query_chain(question, language, chat_history):
         "language": lambda x: language['language'],
     }
 
-    logger.debug(f"final inputs: {final_inputs}\n")
-
     # And finally, we do the part that returns the answers
     answer = {
         "answer": final_inputs | chat_prompt | chat_llm,
         "docs": itemgetter("docs"),
     }
 
-    logger.debug(f"answer {answer}\n")
 
-    # And now we put it all together!
-    if first_call:
-        final_chain = loaded_memory | retrieved_documents| answer
-    else:
-        final_chain = loaded_memory | standalone_question | retrieved_documents | answer
+    # And now we put it all together in a 'RunnableBranch', so we only invoke the rephrasing part when the chat history is not empty
+    final_chain = RunnableBranch(
+        (lambda x: x["first_call"], loaded_memory | direct_question | retrieved_documents | answer),
+        loaded_memory | standalone_question | retrieved_documents_sa | answer,
+    )
 
     logger.debug(f"final chain {final_chain}\n")
     result = final_chain.invoke(question)
