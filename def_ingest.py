@@ -61,15 +61,17 @@ def extract_urls_from_sitemap(base_directory):
     tree = ET.parse(sitemap_file)
     root = tree.getroot()
 
+    # List to store the complete URLs of the webpages to be retrieved
+    webpages_to_retrieve = []
     # Extract the URLs from the sitemap
-    to_be_retieved = [
-        base_directory + elem.text + "index.html"
-        for elem in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
-    ]
+    for elem in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc"):
+        # replace the / with the os separator
+        url_path = elem.text.replace("/", os.sep)
+        complete_url = base_directory + url_path + "index.html"
+        webpages_to_retrieve.append(complete_url)
 
-    logger.debug(f"...sitemap as urls: {to_be_retieved[:5]}....")
-    return to_be_retieved
-
+    logger.info(f"...sitemap as urls: {webpages_to_retrieve[:5]}....")
+    return webpages_to_retrieve
 
 def embed_text(texts, save_loc):
     embeddings = AzureOpenAIEmbeddings(
@@ -98,14 +100,20 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
     logger.info(f"generating html: {local_source_path}, {source_website_url}")
     full_sitemap_list = extract_urls_from_sitemap(website_generated_path)
 
+    exclusion_list = [os.sep + 'tag' + os.sep, 
+                      os.sep + 'category' + os.sep, 
+                      os.sep + 'help' + os.sep + 'index']
     data = []
     for file_name in full_sitemap_list:
+        logger.info(f"Processing file {file_name}")
         loader = TextLoader(file_name)
         # ignore url's with /tag/ or /category/ as they do not contain relevant info.
-        if '/tag/' in file_name or '/category/' in file_name or '/help/index' in file_name:
-            logger.info(f"exclusion found, not ingesting {file_name}\n")
+        if any(exclusion in file_name for exclusion in exclusion_list):
+            logger.info(f"...exclusion found, not ingesting {file_name}")
             continue
+        logger.info(f"...loading file {file_name}")
         document = loader.load()
+        logger.info(f"...loaded file {file_name}")
         # note h5 and h6 tags for our website contain a lot of irrelevant metadata
         doc_transformed = bs_transformer.transform_documents(document, tags_to_extract=["p", "article", "title", "h1"], unwanted_tags=["h5", "h6"], remove_lines=True)
         body_text = doc_transformed[0]
@@ -128,15 +136,16 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
 def remove_and_recreate(dir_path):
     try:
         if os.path.exists(dir_path):
+            logger.info(f"...about to remove directory {dir_path} and its contents.")
             shutil.rmtree(dir_path)
-            logger.info(f"Directory {dir_path} and its contents removed successfully.")
+            logger.info(f"...removed directory {dir_path} and its contents.")
         os.makedirs(dir_path)
         logger.info(f"...directory {dir_path} (re)created.")
     except OSError as e:
         logger.error(f"Error: {e.strerror}")
 
 def clone_and_generate(website_repo, destination_path, source_path):
-    logger.info(f"About to generate website")
+    logger.info(f"About to generate website: {website_repo}")
     remove_and_recreate(source_path)
     remove_and_recreate(destination_path)
     logger.info(f"...cloning or updating repo")
@@ -166,8 +175,16 @@ def clone_and_generate(website_repo, destination_path, source_path):
     additional_path_usr = '/usr/local'
     env["PATH"] = additional_path_go + os.pathsep + additional_path_usr + os.pathsep + env["PATH"]
     hugo_command = ['hugo', '--gc', '-b', '/', '-d', destination_path]
+    logger.info(f"hugo command: {hugo_command}")
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
     logger.info(f"hugo result: {result_hugo.stdout}")
+    sitemap_file = destination_path + os.sep + "sitemap.xml"
+    if not os.path.exists(sitemap_file):
+        logger.error(f"sitemap.xml not found: {sitemap_file}")    
+        return False
+    else:
+        logger.info(f"Website successfully generated: '{sitemap_file}' exists")    
+        return True    
 
 
 def mainapp(source_website_url, source_website_url2) -> None:
