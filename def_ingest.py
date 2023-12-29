@@ -43,6 +43,12 @@ logger.addHandler(f_handler)
 
 logger.info(f"log level ingest: {LOG_LEVEL}")
 
+def create_sitemap_filepath(website_generated_path):
+    return website_generated_path + os.sep + "sitemap.xml"
+
+def sitemap_file_exists(website_generated_path):
+    sitemap_file = create_sitemap_filepath(website_generated_path)
+    return os.path.exists(sitemap_file)
 
 def extract_urls_from_sitemap(base_directory):
     """
@@ -54,7 +60,7 @@ def extract_urls_from_sitemap(base_directory):
         list of files to be retrieved
     """
 
-    sitemap_file = base_directory + os.sep + "sitemap.xml"
+    sitemap_file = create_sitemap_filepath(base_directory)
     logger.info(f"Extracting urls using {sitemap_file}")
 
     # Parse the XML directly from the file
@@ -103,31 +109,34 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
     exclusion_list = [os.sep + 'tag' + os.sep, 
                       os.sep + 'category' + os.sep, 
                       os.sep + 'help' + os.sep + 'index']
+    
+
     data = []
     for file_name in full_sitemap_list:
         logger.info(f"Processing file {file_name}")
-        loader = TextLoader(file_name)
-        # ignore url's with /tag/ or /category/ as they do not contain relevant info.
-        if any(exclusion in file_name for exclusion in exclusion_list):
-            logger.info(f"...exclusion found, not ingesting {file_name}")
-            continue
-        logger.info(f"...loading file {file_name}")
-        document = loader.load()
-        logger.info(f"...loaded file {file_name}")
-        # note h5 and h6 tags for our website contain a lot of irrelevant metadata
-        doc_transformed = bs_transformer.transform_documents(document, tags_to_extract=["p", "article", "title", "h1"], unwanted_tags=["h5", "h6"], remove_lines=True)
-        body_text = doc_transformed[0]
+        try:
+            loader = TextLoader(file_name)
+            # ignore url's with /tag/ or /category/ as they do not contain relevant info.
+            if any(exclusion in file_name for exclusion in exclusion_list):
+                logger.info(f"...exclusion found, not ingesting {file_name}")
+                continue
+            document = loader.load()
+            # note h5 and h6 tags for our website contain a lot of irrelevant metadata
+            doc_transformed = bs_transformer.transform_documents(document, tags_to_extract=["p", "article", "title", "h1"], unwanted_tags=["h5", "h6"], remove_lines=True)
+            body_text = doc_transformed[0]
 
-        # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
-        body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
+            # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
+            body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
 
-        # remove the local directory from the source object
-        body_text.metadata['source'] = body_text.metadata['source'].replace(website_generated_path, source_website_url)
+            # remove the local directory from the source object
+            body_text.metadata['source'] = body_text.metadata['source'].replace(website_generated_path, source_website_url)
 
-        if len(body_text.page_content) > 100:
-            data.append(body_text)
-        else:
-            logger.info(f"document too small, not adding: {body_text.page_content}\n")
+            if len(body_text.page_content) > 100:
+                data.append(body_text)
+            else:
+                logger.info(f"document too small, not adding: {body_text.page_content}\n")
+        except Exception as e:
+             logger.error(f"...unable to process file: {str(e)}")
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_size/5)
     texts = text_splitter.split_documents(data)
@@ -145,6 +154,17 @@ def remove_and_recreate(dir_path):
         logger.error(f"Error: {e.strerror}")
 
 def clone_and_generate(website_repo, destination_path, source_path):
+    """
+    Purpose:
+        Retrieve the Hugo based website and generate the static html files.
+    Args:
+        website_repo: github repo containing the Hugo based website
+        destination_path: path to directory containing generated html files
+        source_path: path to directory containing the checked out github repo
+    Returns:
+        True if successful, False otherwise
+    """
+    
     logger.info(f"About to generate website: {website_repo}")
     remove_and_recreate(source_path)
     remove_and_recreate(destination_path)
@@ -178,7 +198,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
     logger.info(f"hugo command: {hugo_command}")
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
     logger.info(f"hugo result: {result_hugo.stdout}")
-    sitemap_file = destination_path + os.sep + "sitemap.xml"
+    sitemap_file = create_sitemap_filepath(destination_path)
     if not os.path.exists(sitemap_file):
         logger.error(f"sitemap.xml not found: {sitemap_file}")    
         return False
@@ -187,7 +207,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
         return True    
 
 
-def mainapp(source_website_url, source_website_url2) -> None:
+def create_vector_db(source_website_url, source_website_url2) -> None:
     """
     Purpose:
         ingest the transformed website contents into a vector database in presized chunks.
@@ -215,4 +235,4 @@ def mainapp(source_website_url, source_website_url2) -> None:
 
 # only execute if this is the main program run (so not imported)
 if __name__ == "__main__":
-    mainapp(os.getenv('AI_SOURCE_WEBSITE'),os.getenv('AI_SOURCE_WEBSITE2'))
+    create_vector_db(os.getenv('AI_SOURCE_WEBSITE'),os.getenv('AI_SOURCE_WEBSITE2'))

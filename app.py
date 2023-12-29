@@ -101,7 +101,7 @@ def ingest(source_url, website_repo, destination_path, source_path, source_url2,
     ingest_successful = def_ingest.clone_and_generate(website_repo, destination_path, source_path)
     if ingest_successful:
         def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
-        def_ingest.mainapp(source_url, source_url2)
+        def_ingest.create_vector_db(source_url, source_url2)
 
         return "Ingest function executed"
     else:
