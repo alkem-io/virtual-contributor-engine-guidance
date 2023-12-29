@@ -116,17 +116,33 @@ embeddings = AzureOpenAIEmbeddings(
     chunk_size=1
 )
 
-# Check if the vector database exists
-if os.path.exists(vectordb_path+"/index.pkl"):
-    logger.info(f"The file vector database is present")
-else:
-    # ingest data
-    if generate_website:
-        def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
-        def_ingest.clone_and_generate(config['website_repo2'], website_generated_path2, website_source_path2)
-    def_ingest.mainapp(config['source_website'], config['source_website2'])
+def load_vector_db():
+    """
+    Purpose:
+        Load the data into the vector database.
+    Args:
+        
+    Returns:
+        vectorstore: the vectorstore object
+    """
+    # Check if the vector database exists
+    if os.path.exists(vectordb_path + os.sep + "index.pkl"):
+        logger.info(f"The file vector database is present")
+    else:
+        logger.info(f"The file vector database is not present, ingesting")
+        generate_website = False
+        # ingest data
+        if generate_website:
+            ingest_website_successful = def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
+            if ingest_website_successful:
+                def_ingest.clone_and_generate(config['website_repo2'], website_generated_path2, website_source_path2)
 
-vectorstore = FAISS.load_local(vectordb_path, embeddings)
+        if def_ingest.sitemap_file_exists(website_generated_path):
+            def_ingest.create_vector_db(config['source_website'], config['source_website2'])
+    
+    return FAISS.load_local(vectordb_path, embeddings)
+
+vectorstore = load_vector_db()
 retriever = vectorstore.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": .5})
 
 chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],

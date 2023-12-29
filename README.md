@@ -95,7 +95,9 @@ You can find sample values in `.azure-template.env`. Configure them and create `
 
 ### Python & Poetry
 The project requires Python & Poetry installed. The minimum version dependencies can be found at `pyproject.toml`.
-After installing Python & Poetry, you simply need to run `poetry run python app.py`
+After installing Python & Poetry:
+* Install the dependencies: `poetry install`
+* Run using `poetry run python app.py`
 
 ### Linux
 The project requires Python 3.11 as a minimum and needs Go and Hugo installed for creating a local version of the website. See Go and Hugo documentation for installation instructions (only when running outside container)
