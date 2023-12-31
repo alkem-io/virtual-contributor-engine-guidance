@@ -76,7 +76,7 @@ def extract_urls_from_sitemap(base_directory):
         complete_url = base_directory + url_path + "index.html"
         webpages_to_retrieve.append(complete_url)
 
-    logger.info(f"...sitemap as urls: {webpages_to_retrieve[:5]}....")
+    # logger.info(f"...sitemap as urls: {webpages_to_retrieve[:5]}....")
     return webpages_to_retrieve
 
 def embed_text(texts, save_loc):
@@ -112,13 +112,16 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
     
 
     data = []
+    error_files = []
+    excluded_files = []
     for file_name in full_sitemap_list:
-        logger.info(f"Processing file {file_name}")
+        # logger.info(f"Processing file {file_name}")
         try:
             loader = TextLoader(file_name)
             # ignore url's with /tag/ or /category/ as they do not contain relevant info.
             if any(exclusion in file_name for exclusion in exclusion_list):
-                logger.info(f"...exclusion found, not ingesting {file_name}")
+                # logger.info(f"...exclusion found, not ingesting {file_name}")
+                excluded_files.append(file_name)
                 continue
             document = loader.load()
             # note h5 and h6 tags for our website contain a lot of irrelevant metadata
@@ -134,12 +137,16 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
             if len(body_text.page_content) > 100:
                 data.append(body_text)
             else:
-                logger.info(f"document too small, not adding: {body_text.page_content}\n")
+                #logger.info(f"document too small, not adding: {body_text.page_content}\n")
+                excluded_files.append(file_name)
         except Exception as e:
-             logger.error(f"...unable to process file: {str(e)}")
+             # logger.error(f"...unable to process file: {str(e)}")
+             error_files.append(file_name)
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_size/5)
     texts = text_splitter.split_documents(data)
+    logger.info(f"==> Returning {len(texts)} files; {len(error_files)} gave errors + {len(excluded_files)} files were skipped")
+    
     return texts
 
 def remove_and_recreate(dir_path):
@@ -229,7 +236,8 @@ def create_vector_db(source_website_url, source_website_url2) -> None:
     with get_openai_callback() as cb:
         embed_text(texts, vectordb_path)
     logger.info(f"\nEmbedding costs: {cb.total_cost}")
-    f.write(str(texts))
+    stringified_texts = str(texts)
+    f.write(stringified_texts)
     f.close()
 
 
