@@ -15,7 +15,7 @@ import logging
 import sys
 import io
 import def_ingest
-from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL, max_token_limit
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, LOG_LEVEL, max_token_limit
 
 import os
 
@@ -42,7 +42,7 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
-logger.info(f"log level ai_utils: {LOG_LEVEL}")
+logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
 
 # verbose output for LLMs
 if LOG_LEVEL=="DEBUG":
@@ -130,7 +130,7 @@ def load_vector_db():
         logger.info(f"The file vector database is present")
     else:
         logger.info(f"The file vector database is not present, ingesting")
-        generate_website = False
+        generate_website = True
         # ingest data
         if generate_website:
             ingest_website_successful = def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)

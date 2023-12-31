@@ -41,7 +41,7 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
-logger.info(f"log level ingest: {LOG_LEVEL}")
+logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
 
 def create_sitemap_filepath(website_generated_path):
     return website_generated_path + os.sep + "sitemap.xml"
@@ -229,9 +229,9 @@ def create_vector_db(source_website_url, source_website_url2) -> None:
 
     # read and parse the files
     # local_source_path, source_website_url, website_generated_path
-    texts = read_and_parse_html(website_source_path, source_website_url, website_generated_path)
-    texts += read_and_parse_html(website_source_path2, source_website_url2, website_generated_path2)
-
+    texts = read_and_parse_html(website_source_path2, source_website_url2, website_generated_path2)
+    texts += read_and_parse_html(website_source_path, source_website_url, website_generated_path)
+    
     # Save embeddings to vectordb
     with get_openai_callback() as cb:
         embed_text(texts, vectordb_path)

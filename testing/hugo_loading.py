@@ -17,7 +17,7 @@ import logging
 import sys
 import io
 import def_ingest
-from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL, max_token_limit
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, LOG_LEVEL, max_token_limit
 
 import os
 
@@ -44,7 +44,7 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
-logger.info(f"log level ai_utils: {LOG_LEVEL}")
+logger.info(f"log level {__name__}: {LOG_LEVEL}")
 
 
 file_name = "c:\\Users\\neil\\alkemio\\website\\generated\\structure\\index.html"

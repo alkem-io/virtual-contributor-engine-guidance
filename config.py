@@ -27,7 +27,6 @@ website_source_path2 = local_path + os.sep + 'website2' + os.sep + 'source'
 website_generated_path = local_path + os.sep + 'website' + os.sep + 'generated'
 website_generated_path2 = local_path + os.sep + 'website2' + os.sep + 'generated'
 vectordb_path = local_path + os.sep + 'vectordb'
-generate_website = True
 chunk_size = 3000
 # token limit for for the completion of the chat model, this does not include the overall context length
 max_token_limit = 2000

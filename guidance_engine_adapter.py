@@ -2,19 +2,18 @@ from langchain.callbacks import get_openai_callback
 from langchain.memory import ConversationBufferMemory
 import pika
 import json
-import ai_utils
 import logging
 import sys
 import io
 import os
+import def_ai_setup
 import def_ingest
-from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, generate_website, local_path, LOG_LEVEL
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, LOG_LEVEL
 
 # configure logging
 logger = logging.getLogger(__name__)
 assert LOG_LEVEL in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
-
 
 # Create handlers
 c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
@@ -33,7 +32,7 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
-logger.info(f"log level app: {LOG_LEVEL}")
+logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
 
 user_data = {}
 user_chain = {}
@@ -58,7 +57,7 @@ def query(user_id, query, language_code):
         reset(user_id)
         #chat_history=[]
 
-    user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
+    user_data[user_id]['language'] = def_ai_setup.get_language_by_code(language_code)
 
     logger.debug(f"\nlanguage: {user_data[user_id]['language']}\n")
     #chat_history = user_data[user_id]['chat_history']
@@ -66,7 +65,7 @@ def query(user_id, query, language_code):
 
 
     with get_openai_callback() as cb:
-        llm_result = ai_utils.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
+        llm_result = def_ai_setup.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
         answer = llm_result['answer']
 
 
