@@ -81,10 +81,10 @@ def extract_urls_from_sitemap(base_directory):
 
 def embed_text(texts, save_loc):
     embeddings = AzureOpenAIEmbeddings(
-    azure_deployment=config['embeddings_deployment_name'],
-    openai_api_version=config['openai_api_version'],
-    chunk_size=1
-)
+        azure_deployment=config['embeddings_deployment_name'],
+        openai_api_version=config['openai_api_version'],
+        chunk_size=1
+        )
     docsearch = FAISS.from_documents(texts, embeddings)
 
     docsearch.save_local(save_loc)
@@ -256,4 +256,5 @@ def create_vector_db(source_website_url, source_website_url2) -> None:
 
 # only execute if this is the main program run (so not imported)
 if __name__ == "__main__":
-    ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)    
+    ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, 
+           config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)    
