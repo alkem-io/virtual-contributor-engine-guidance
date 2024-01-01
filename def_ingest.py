@@ -169,32 +169,39 @@ def clone_and_generate(website_repo, destination_path, source_path):
         destination_path: path to directory containing generated html files
         source_path: path to directory containing the checked out github repo
     Returns:
-        True if successful, False otherwise
+        
     """
     
     logger.info(f"About to generate website: {website_repo}")
     remove_and_recreate(source_path)
     remove_and_recreate(destination_path)
-    logger.info(f"...cloning or updating repo")
+    os.chdir(source_path)
     branch = "main"
     git_switch_command = ['git', 'switch', branch]
-    # Check if the repository already exists in the source_path
-    if os.path.exists(os.path.join(source_path, '.git')):
+    git_directory = os.path.join(source_path, '.git')
+    # Check if the repository already exists in the source_path    
+    if os.path.exists(git_directory):
+        logger.info(f"...git directory exists, pulling in {os.getcwd()}")
         # Repository exists, perform a git pull to update it
         git_pull_command = ['git', 'pull', 'origin', branch]  # Modify branch name as needed
-        result_pull = subprocess.run(git_pull_command, cwd=source_path, capture_output=True, text=True)
-        logger.info(f"git pull result: {result_pull.stdout}")
+        result_pull = subprocess.run(git_pull_command, capture_output=True, text=True)
+        if (result_pull.returncode != 0):
+            logger.error(f"Unable to pull {website_repo} repository: {result_pull.stderr}")
         result_switch = subprocess.run(git_switch_command, cwd=source_path, capture_output=True, text=True)
-        logger.info(f"git switch result: {result_switch.stdout}")
+        if (result_switch.returncode != 0):
+            logger.error(f"Unable to switch {website_repo} repository: {result_switch.stderr}")
     else:
+        logger.info(f"...git directory does not exist, clonging in {os.getcwd()}")
         # Repository doesn't exist, perform a git clone
         clone_command = ['git', 'clone', "https://" + github_user + ":" + github_pat + "@" + website_repo, source_path]
         result_clone = subprocess.run(clone_command, capture_output=True, text=True)
-        logger.info(f"git clone result: {result_clone.stdout}")
+        if (result_clone.returncode != 0):
+            raise Exception(f"Unable to clone {website_repo} repository: {result_clone.stderr}")
         result_switch = subprocess.run(git_switch_command, cwd=source_path, capture_output=True, text=True)
-        logger.info(f"git switch result: {result_switch.stdout}")
-
-    os.chdir(source_path)
+        if (result_switch.returncode != 0):
+            raise Exception(f"Unable to switch {website_repo} repository: {result_switch.stderr}")
+        logger.info(f"git cloned + switch completed")
+    
     logger.info(f"...cloned/updated, moved to directory: {os.getcwd()}")
 
     env = os.environ.copy()
@@ -204,15 +211,21 @@ def clone_and_generate(website_repo, destination_path, source_path):
     hugo_command = ['hugo', '--gc', '-b', '/', '-d', destination_path]
     logger.info(f"hugo command: {hugo_command}")
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
+    if (result_hugo.returncode != 0):
+        raise Exception(f"Unable to generate website using hugo command: '{hugo_command}': {result_hugo.stderr}")
     logger.info(f"hugo result: {result_hugo.stdout}")
+
     sitemap_file = create_sitemap_filepath(destination_path)
     if not os.path.exists(sitemap_file):
-        logger.error(f"sitemap.xml not found: {sitemap_file}")    
-        return False
-    else:
-        logger.info(f"Website successfully generated: '{sitemap_file}' exists")    
-        return True    
+        raise Exception(f"Unable to generate website in {destination_path}: sitemap.xml not found: {sitemap_file}")    
 
+    logger.info(f"Website successfully generated: '{destination_path}'\n")    
+
+def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
+    clone_and_generate(website_repo, destination_path, source_path)
+    clone_and_generate(website_repo2, destination_path2, source_path2)
+    create_vector_db(source_url, source_url2)
+    logger.info(f"Ingest successful")
 
 def create_vector_db(source_website_url, source_website_url2) -> None:
     """
@@ -243,4 +256,4 @@ def create_vector_db(source_website_url, source_website_url2) -> None:
 
 # only execute if this is the main program run (so not imported)
 if __name__ == "__main__":
-    create_vector_db(os.getenv('AI_SOURCE_WEBSITE'),os.getenv('AI_SOURCE_WEBSITE2'))
+    ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)    

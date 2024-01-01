@@ -130,15 +130,7 @@ def load_vector_db():
         logger.info(f"The file vector database is present")
     else:
         logger.info(f"The file vector database is not present, ingesting")
-        generate_website = True
-        # ingest data
-        if generate_website:
-            ingest_website_successful = def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
-            if ingest_website_successful:
-                def_ingest.clone_and_generate(config['website_repo2'], website_generated_path2, website_source_path2)
-
-        if def_ingest.sitemap_file_exists(website_generated_path):
-            def_ingest.create_vector_db(config['source_website'], config['source_website2'])
+        def_ingest.ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)    
     
     return FAISS.load_local(vectordb_path, embeddings)
 
