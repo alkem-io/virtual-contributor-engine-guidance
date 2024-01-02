@@ -38,8 +38,15 @@ logger.addHandler(f_handler)
 
 logger.info(f"log level app: {LOG_LEVEL}")
 
+# define variables
 user_data = {}
 user_chain = {}
+# dictionary to keep track of the locks for each user
+user_locks = {}
+# Dictionary to keep track of the tasks for each user
+user_tasks = {}
+# Lock to prevent multiple ingestions from happening at the same time
+ingestion_lock = asyncio.Lock()
 
 class RabbitMQ:
     def __init__(self, host, login, password, queue):
@@ -67,63 +74,63 @@ rabbitmq = RabbitMQ(
 )
 
 async def query(user_id, query, language_code):
-    logger.info(f"\nQuery from user {user_id}: {query}\n")
+    async with ingestion_lock:
+        logger.info(f"\nQuery from user {user_id}: {query}\n")
 
-    if user_id not in user_data:
-        user_data[user_id] = {}
-        user_data[user_id]['chat_history'] = ConversationBufferMemory(return_messages=True, output_key="answer", input_key="question")
-        #user_chain[user_id]=ai_utils.setup_chain()
-        reset(user_id)
-        #chat_history=[]
+        if user_id not in user_data:
+            user_data[user_id] = {}
+            user_data[user_id]['chat_history'] = ConversationBufferMemory(return_messages=True, output_key="answer", input_key="question")
+            #user_chain[user_id]=ai_utils.setup_chain()
+            reset(user_id)
+            #chat_history=[]
 
-    user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
+        user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
 
-    logger.debug(f"\nlanguage: {user_data[user_id]['language']}\n")
-    #chat_history = user_data[user_id]['chat_history']
-
-
-
-    with get_openai_callback() as cb:
-        llm_result = ai_utils.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
-        answer = llm_result['answer']
+        logger.debug(f"\nlanguage: {user_data[user_id]['language']}\n")
+        #chat_history = user_data[user_id]['chat_history']
 
 
-    # clean up the document sources to avoid sending too much information over.
-    sources = [doc.metadata['source'] for doc in llm_result['source_documents']]
-    logger.debug(f"\n\nsources: {sources}\n\n")
 
-    logger.info(f"\nTotal Tokens: {cb.total_tokens}")
-    logger.info(f"\nPrompt Tokens: {cb.prompt_tokens}")
-    logger.info(f"\nCompletion Tokens: {cb.completion_tokens}")
-    logger.info(f"\nTotal Cost (USD): ${cb.total_cost}")
+        with get_openai_callback() as cb:
+            llm_result = await ai_utils.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
+            answer = llm_result['answer']
 
-    logger.debug(f"\n\nLLM result: {llm_result}\n\n")
-    logger.info(f"\n\nanswer: {answer}\n\n")
-    logger.debug(f"\n\nsources: {sources}\n\ n")
 
-    user_data[user_id]['chat_history'].save_context({"question": query}, {"answer": answer.content})
-    logger.debug(f"new chat history {user_data[user_id]['chat_history']}\n")
-    response = json.dumps({
-        "question": query, "answer": str(answer), "sources": sources, "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
-    }
-    )
+        # clean up the document sources to avoid sending too much information over.
+        sources = [doc.metadata['source'] for doc in llm_result['source_documents']]
+        logger.debug(f"\n\nsources: {sources}\n\n")
 
-    return response
+        logger.debug(f"\nTotal Tokens: {cb.total_tokens}")
+        logger.debug(f"\nPrompt Tokens: {cb.prompt_tokens}")
+        logger.debug(f"\nCompletion Tokens: {cb.completion_tokens}")
+        logger.debug(f"\nTotal Cost (USD): ${cb.total_cost}")
+
+        logger.debug(f"\n\nLLM result: {llm_result}\n\n")
+        logger.info(f"\n\nanswer: {answer}\n\n")
+        logger.debug(f"\n\nsources: {sources}\n\ n")
+
+        user_data[user_id]['chat_history'].save_context({"question": query}, {"answer": answer.content})
+        logger.debug(f"new chat history {user_data[user_id]['chat_history']}\n")
+        response = json.dumps({
+            "question": query, "answer": str(answer), "sources": sources, "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
+        }
+        )
+
+        return response
 
 def reset(user_id):
     user_data[user_id]['chat_history'].clear()
 
     return "Reset function executed"
 
-def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
-    def_ingest.clone_and_generate(website_repo, destination_path, source_path)
-    def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
-    def_ingest.mainapp(source_url, source_url2)
+async def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
+    async with ingestion_lock:
+        def_ingest.clone_and_generate(website_repo, destination_path, source_path)
+        def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
+        def_ingest.mainapp(source_url, source_url2)
 
     return "Ingest function executed"
 
-# Dictionary to keep track of the tasks for each user
-user_tasks = {}
 
 async def on_request(message: aio_pika.IncomingMessage):
     async with message.process():
@@ -133,64 +140,50 @@ async def on_request(message: aio_pika.IncomingMessage):
         # Get the user ID from the message body
         user_id = body['data']['userId']
 
-        logger.debug(f"\nrequest arriving for user id: {user_id}, deciding what to do\n\n") 
+        logger.info(f"\nrequest arriving for user id: {user_id}, deciding what to do\n\n") 
 
-        # If there's already a task for this user, wait for it to finish before processing the message
-        if user_id in user_tasks and not user_tasks[user_id].done():
-            logger.debug(f"existing task running for user id: {user_id}, waiting for it to finish first\n\n") 
-            user_tasks[user_id] = asyncio.create_task(process_message_after(user_tasks[user_id], message))
+        # If there's no lock for this user, create one
+        if user_id not in user_locks:
+            user_locks[user_id] = asyncio.Lock()
+
+        # Check if the lock is locked
+        if user_locks[user_id].locked():
+            logger.info(f"existing task running for user id: {user_id}, waiting for it to finish first\n\n") 
         else:
-            # If there's no task for this user, process the message immediately
-            logger.debug(f"no task running for user id: {user_id}, let's move!\n\n") 
-            user_tasks[user_id] = asyncio.create_task(process_message(message))
+            logger.info(f"no task running for user id: {user_id}, let's move!\n\n") 
 
-async def process_message_after(previous_task: asyncio.Task, message: aio_pika.IncomingMessage):
-    # Wait for the previous task to finish
-    await previous_task
-    # Then process the message
-    logger.debug(f"ongoing task finished, no more waiting here!\n\n") 
-    await process_message(message)
+        # Acquire the lock for this user
+        async with user_locks[user_id]:
+            # Process the message
+            await process_message(message)
 
 
 async def process_message(message: aio_pika.IncomingMessage):
-        body = json.loads(message.body.decode())
-        user_id = body['data'].get('userId')
+    body = json.loads(message.body.decode())
+    user_id = body['data'].get('userId')
 
-        operation = body['pattern']['cmd']
+    operation = body['pattern']['cmd']
 
-        if operation == 'ingest':
-            response = ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
+    if operation == 'ingest':
+        async with ingestion_lock:
+            response = await ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
+    else:
+        if user_id is None:
+            response = "userId not provided"
         else:
-            if user_id is None:
-                response = "userId not provided"
-            else:
-                if operation == 'query':
-                    if ('question' in body['data']) and ('language' in body['data']):
-                        logger.debug(f"query time for user id: {user_id}, let's call the query() function!\n\n") 
-                        response = await query(user_id, body['data']['question'], body['data']['language'])
-                    else:
-                        response = "Query parameter(s) not provided"
-                elif operation == 'reset':
-                    response = reset(user_id)
+            if operation == 'query':
+                if ('question' in body['data']) and ('language' in body['data']):
+                    logger.info(f"query time for user id: {user_id}, let's call the query() function!\n\n") 
+                    response = await query(user_id, body['data']['question'], body['data']['language'])
                 else:
-                    response = "Unknown function"
-
-        await rabbitmq.channel.default_exchange.publish(
-            aio_pika.Message(
-                body=json.dumps({"operation": "feedback", "result": response}).encode(),
-                correlation_id=message.correlation_id,
-                reply_to=message.reply_to
-            ),
-            routing_key=message.reply_to
-        )
-
-        logger.info(f"Response sent for correlation_id: {message.correlation_id}")
-        logger.info(f"Response sent to: {message.reply_to}")
-        logger.info(f"response: {response}")
-
+                    response = "Query parameter(s) not provided"
+            elif operation == 'reset':
+                response = reset(user_id)
+            else:
+                response = "Unknown function"
 
 async def main():
-    logger.debug(f"main fucntion (re)starting\n")
+    logger.info(f"main fucntion (re)starting\n")
     # rabbitmq is an instance of the RabbitMQ class defined earlier
     await rabbitmq.connect()
 

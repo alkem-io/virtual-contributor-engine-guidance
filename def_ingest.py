@@ -67,7 +67,7 @@ def extract_urls_from_sitemap(base_directory):
         for elem in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
 
-    logger.debug(f"...sitemap as urls: {to_be_retieved[:5]}....")
+    logger.info(f"...sitemap as urls: {to_be_retieved[:5]}....")
     return to_be_retieved
 
 
@@ -103,7 +103,7 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
         loader = TextLoader(file_name)
         # ignore url's with /tag/ or /category/ as they do not contain relevant info.
         if '/tag/' in file_name or '/category/' in file_name or '/help/index' in file_name:
-            logger.info(f"exclusion found, not ingesting {file_name}\n")
+            logger.warning(f"exclusion found, not ingesting {file_name}\n")
             continue
         document = loader.load()
         # note h5 and h6 tags for our website contain a lot of irrelevant metadata
@@ -119,7 +119,7 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
         if len(body_text.page_content) > 100:
             data.append(body_text)
         else:
-            logger.info(f"document too small, not adding: {body_text.page_content}\n")
+            logger.warning(f"document too small, not adding: {body_text.page_content}\n")
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_size/5)
     texts = text_splitter.split_documents(data)

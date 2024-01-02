@@ -149,7 +149,7 @@ def _combine_documents(
     return document_separator.join(doc_strings)
 
 
-def query_chain(question, language, chat_history):
+async def query_chain(question, language, chat_history):
 
     # check whether the chat history is empty
     if  chat_history.buffer == []:
@@ -160,7 +160,7 @@ def query_chain(question, language, chat_history):
     # add first_call to the question
     question.update({"first_call": first_call})
 
-    logger.debug(f"first call: {first_call}\n")
+    logger.info(f"first call: {first_call}\n")
     logger.debug(f"chat history: {chat_history.buffer}\n")
 
     # First we add a step to load memory
@@ -221,5 +221,5 @@ def query_chain(question, language, chat_history):
     )
 
     logger.debug(f"final chain {final_chain}\n")
-    result = final_chain.invoke(question)
+    result = await final_chain.ainvoke(question)
     return {'answer': result['answer'], 'source_documents': result['docs']}
