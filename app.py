@@ -132,6 +132,7 @@ async def ingest(source_url, website_repo, destination_path, source_path, source
     return "Ingest function executed"
 
 
+
 async def on_request(message: aio_pika.IncomingMessage):
     async with message.process():
         # Parse the message body as JSON
@@ -181,6 +182,19 @@ async def process_message(message: aio_pika.IncomingMessage):
                 response = reset(user_id)
             else:
                 response = "Unknown function"
+
+    await rabbitmq.channel.default_exchange.publish(
+        aio_pika.Message(
+            body=json.dumps({"operation": "feedback", "result": response}).encode(),
+            correlation_id=message.correlation_id,
+            reply_to=message.reply_to
+        ),
+        routing_key=message.reply_to
+    )
+
+    logger.info(f"Response sent for correlation_id: {message.correlation_id}")
+    logger.info(f"Response sent to: {message.reply_to}")
+    logger.debug(f"response: {response}")
 
 async def main():
     logger.info(f"main fucntion (re)starting\n")
