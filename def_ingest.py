@@ -1,8 +1,12 @@
 import os
 import logging
+import sys
+import io
+import re
 from langchain.embeddings import AzureOpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
+from langchain.callbacks import get_openai_callback
 import xml.etree.ElementTree as ET
 
 
@@ -12,17 +16,20 @@ from langchain.document_loaders import TextLoader
 import shutil
 import subprocess
 import xml.etree.ElementTree as ET
-from config import config, local_path, website_generated_path, website_generated_path2, vectordb_path, website_source_path, website_source_path2, github_user, github_pat, github_pat, LOG_LEVEL
+from config import config, local_path, website_generated_path, website_generated_path2, vectordb_path, website_source_path, website_source_path2, github_user, github_pat, github_pat, LOG_LEVEL, chunk_size
 
 # configure logging
 logger = logging.getLogger(__name__)
+assert LOG_LEVEL in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
+
 
 # Create handlers
-c_handler = logging.StreamHandler()
+c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
 f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
-f_handler.setLevel(logging.ERROR)
+f_handler.setLevel(logging.WARNING)
 
 # Create formatters and add them to handlers
 c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
@@ -34,7 +41,8 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
-chunk_size=2000
+logger.info(f"log level ingest: {LOG_LEVEL}")
+
 
 def extract_urls_from_sitemap(base_directory):
     """
@@ -59,7 +67,7 @@ def extract_urls_from_sitemap(base_directory):
         for elem in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")
     ]
 
-    logger.debug(f"...sitemap as urls: {to_be_retieved[:5]}....")
+    logger.info(f"...sitemap as urls: {to_be_retieved[:5]}....")
     return to_be_retieved
 
 
@@ -93,9 +101,9 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
     data = []
     for file_name in full_sitemap_list:
         loader = TextLoader(file_name)
-        # ignore url's with /tag/ as they do not contain relevant info.
-        if '/tag/' in file_name:
-            logger.info(f"'/tag/' found, not ingesting {file_name}\n")
+        # ignore url's with /tag/ or /category/ as they do not contain relevant info.
+        if '/tag/' in file_name or '/category/' in file_name or '/help/index' in file_name:
+            logger.warning(f"exclusion found, not ingesting {file_name}\n")
             continue
         document = loader.load()
         # note h5 and h6 tags for our website contain a lot of irrelevant metadata
@@ -103,16 +111,18 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
         body_text = doc_transformed[0]
 
         # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
-        #body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
+        body_text.page_content = re.sub(r'(\n ){2,}', '\n', re.sub(r'\n+', '\n', re.sub(r' +', ' ', body_text.page_content)))
 
         # remove the local directory from the source object
         body_text.metadata['source'] = body_text.metadata['source'].replace(website_generated_path, source_website_url)
 
-        data.append(body_text)
+        if len(body_text.page_content) > 100:
+            data.append(body_text)
+        else:
+            logger.warning(f"document too small, not adding: {body_text.page_content}\n")
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_size/5)
     texts = text_splitter.split_documents(data)
-    logger.debug(texts)
     return texts
 
 def remove_and_recreate(dir_path):
@@ -157,7 +167,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
     env["PATH"] = additional_path_go + os.pathsep + additional_path_usr + os.pathsep + env["PATH"]
     hugo_command = ['hugo', '--gc', '-b', '/', '-d', destination_path]
     result_hugo = subprocess.run(hugo_command, env=env, capture_output=True, text=True)
-    logger.error(f"hugo result: {result_hugo.stdout}")
+    logger.info(f"hugo result: {result_hugo.stdout}")
 
 
 def mainapp(source_website_url, source_website_url2) -> None:
@@ -179,8 +189,9 @@ def mainapp(source_website_url, source_website_url2) -> None:
     texts += read_and_parse_html(website_source_path2, source_website_url2, website_generated_path2)
 
     # Save embeddings to vectordb
-    embed_text(texts, vectordb_path)
-
+    with get_openai_callback() as cb:
+        embed_text(texts, vectordb_path)
+    logger.info(f"\nEmbedding costs: {cb.total_cost}")
     f.write(str(texts))
     f.close()
 

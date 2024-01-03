@@ -1,17 +1,27 @@
 from langchain.callbacks import get_openai_callback
-import pika
+from langchain.memory import ConversationBufferMemory
+#import pika
 import json
 import ai_utils
 import logging
+import sys
+import io
+import asyncio
+import os
 import def_ingest
+import aio_pika
+from aio_pika import connect, RobustConnection, ExchangeType
 from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, generate_website, local_path, LOG_LEVEL
 
 # configure logging
 logger = logging.getLogger(__name__)
+assert LOG_LEVEL in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
+
 
 # Create handlers
-c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(local_path+'/app.log')
+c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.WARNING)
@@ -26,97 +36,146 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
+logger.info(f"log level app: {LOG_LEVEL}")
+
+# define variables
 user_data = {}
 user_chain = {}
+# dictionary to keep track of the locks for each user
+user_locks = {}
+# Dictionary to keep track of the tasks for each user
+user_tasks = {}
+# Lock to prevent multiple ingestions from happening at the same time
+ingestion_lock = asyncio.Lock()
 
-credentials = pika.PlainCredentials(config['rabbitmq_user'],
-                                    config['rabbitmq_password'])
-parameters = pika.ConnectionParameters(host=config['rabbitmq_host'],
-                                       credentials=credentials)
-logger.info(f"\About to connect to RabbitMQ with params {config['rabbitmq_user']}: {config['rabbitmq_host']}\n")
-connection = pika.BlockingConnection(parameters)
-channel = connection.channel()
+class RabbitMQ:
+    def __init__(self, host, login, password, queue):
+        self.host = host
+        self.login = login
+        self.password = password
+        self.queue = queue
+        self.connection = None
+        self.channel = None
 
-channel.queue_declare(queue=config['rabbitmqrequestqueue'])
+    async def connect(self):
+        self.connection: RobustConnection = await connect(
+            host=self.host,
+            login=self.login,
+            password=self.password
+        )
+        self.channel = await self.connection.channel()
+        await self.channel.declare_queue(self.queue, auto_delete=False)
 
-def query(user_id, query, language_code):
-    logger.info(f"\nQuery from user {user_id}: {query}\n")
+rabbitmq = RabbitMQ(
+    host=config['rabbitmq_host'],
+    login=config['rabbitmq_user'],
+    password=config['rabbitmq_password'],
+    queue=config['rabbitmqrequestqueue']
+)
 
-    if user_id not in user_data:
-        user_chain[user_id]=ai_utils.setup_chain()
-        reset(user_id)
-        chat_history=[]
+async def query(user_id, query, language_code):
+    async with ingestion_lock:
+        logger.info(f"\nQuery from user {user_id}: {query}\n")
 
-    user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
+        if user_id not in user_data:
+            user_data[user_id] = {}
+            user_data[user_id]['chat_history'] = ConversationBufferMemory(return_messages=True, output_key="answer", input_key="question")
+            #user_chain[user_id]=ai_utils.setup_chain()
+            reset(user_id)
+            #chat_history=[]
 
-    logger.debug(f"\nlanguage: {user_data[user_id]['language']}\n")
-    chat_history = user_data[user_id]['chat_history']
+        user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
 
-    with get_openai_callback() as cb:
-        llm_result = user_chain[user_id]({"question": query, "chat_history": chat_history})
-        answer = llm_result['answer']
-
-
-    # clean up the document sources to avoid sending too much information over.
-    sources = [doc.metadata['source'] for doc in llm_result['source_documents']]
+        logger.debug(f"\nlanguage: {user_data[user_id]['language']}\n")
+        #chat_history = user_data[user_id]['chat_history']
 
 
 
-    logger.info(f"\nTotal Tokens: {cb.total_tokens}")
-    logger.info(f"\nPrompt Tokens: {cb.prompt_tokens}")
-    logger.info(f"\nCompletion Tokens: {cb.completion_tokens}")
-    logger.info(f"\nTotal Cost (USD): ${cb.total_cost}")
+        with get_openai_callback() as cb:
+            llm_result = await ai_utils.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
+            answer = llm_result['answer']
 
-    logger.debug(f"\n\nLLM result: {llm_result}\n\n")
-    logger.info(f"\n\nanswer: {answer}\n\n")
-    logger.debug(f"\n\nsources: {sources}\n\ n")
 
-    formatted_messages = (
-        f"Human:'{llm_result['question']}'",
-        f"Assistant:'{llm_result['answer']}'"
-    )
-    user_data[user_id]['chat_history'].append(formatted_messages)
+        # clean up the document sources to avoid sending too much information over.
+        sources = [doc.metadata['source'] for doc in llm_result['source_documents']]
+        logger.debug(f"\n\nsources: {sources}\n\n")
 
-    # only keep the last 3 entries of that chat history to avoid exceeding the token limit.
-    user_data[user_id]['chat_history'] = user_data[user_id]['chat_history'][-3:]
+        logger.debug(f"\nTotal Tokens: {cb.total_tokens}")
+        logger.debug(f"\nPrompt Tokens: {cb.prompt_tokens}")
+        logger.debug(f"\nCompletion Tokens: {cb.completion_tokens}")
+        logger.debug(f"\nTotal Cost (USD): ${cb.total_cost}")
 
-    logger.debug(f"new chat history {user_data[user_id]['chat_history']}")
-    response = json.dumps({
-        "question": str(llm_result["question"]), "answer": str(answer), "sources": str(llm_result["source_documents"]), "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
-    }
-    )
+        logger.debug(f"\n\nLLM result: {llm_result}\n\n")
+        logger.info(f"\n\nanswer: {answer}\n\n")
+        logger.debug(f"\n\nsources: {sources}\n\ n")
 
-    return response
+        user_data[user_id]['chat_history'].save_context({"question": query}, {"answer": answer.content})
+        logger.debug(f"new chat history {user_data[user_id]['chat_history']}\n")
+        response = json.dumps({
+            "question": query, "answer": str(answer), "sources": sources, "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
+        }
+        )
+
+        return response
 
 def reset(user_id):
+    user_data[user_id]['chat_history'].clear()
 
-    user_data[user_id] = {
-        'chat_history': []
-    }
     return "Reset function executed"
 
-def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
-    def_ingest.clone_and_generate(website_repo, destination_path, source_path)
-    def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
-    def_ingest.mainapp(source_url, source_url2)
+async def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
+    async with ingestion_lock:
+        def_ingest.clone_and_generate(website_repo, destination_path, source_path)
+        def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
+        def_ingest.mainapp(source_url, source_url2)
 
     return "Ingest function executed"
 
-def on_request(ch, method, props, body):
-    message = json.loads(body)
-    user_id = message['data'].get('userId')
 
-    operation = message['pattern']['cmd']
+
+async def on_request(message: aio_pika.IncomingMessage):
+    async with message.process():
+        # Parse the message body as JSON
+        body = json.loads(message.body)
+
+        # Get the user ID from the message body
+        user_id = body['data']['userId']
+
+        logger.info(f"\nrequest arriving for user id: {user_id}, deciding what to do\n\n") 
+
+        # If there's no lock for this user, create one
+        if user_id not in user_locks:
+            user_locks[user_id] = asyncio.Lock()
+
+        # Check if the lock is locked
+        if user_locks[user_id].locked():
+            logger.info(f"existing task running for user id: {user_id}, waiting for it to finish first\n\n") 
+        else:
+            logger.info(f"no task running for user id: {user_id}, let's move!\n\n") 
+
+        # Acquire the lock for this user
+        async with user_locks[user_id]:
+            # Process the message
+            await process_message(message)
+
+
+async def process_message(message: aio_pika.IncomingMessage):
+    body = json.loads(message.body.decode())
+    user_id = body['data'].get('userId')
+
+    operation = body['pattern']['cmd']
 
     if operation == 'ingest':
-        response = ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
+        async with ingestion_lock:
+            response = await ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
     else:
         if user_id is None:
             response = "userId not provided"
         else:
             if operation == 'query':
-                if ('question' in message['data']) and ('language' in message['data']):
-                    response = query(user_id, message['data']['question'], message['data']['language'])
+                if ('question' in body['data']) and ('language' in body['data']):
+                    logger.info(f"query time for user id: {user_id}, let's call the query() function!\n\n") 
+                    response = await query(user_id, body['data']['question'], body['data']['language'])
                 else:
                     response = "Query parameter(s) not provided"
             elif operation == 'reset':
@@ -124,21 +183,37 @@ def on_request(ch, method, props, body):
             else:
                 response = "Unknown function"
 
-    ch.basic_publish(
-        exchange='',
-        routing_key=props.reply_to,
-        properties=pika.BasicProperties(correlation_id=props.correlation_id),
-        body=json.dumps({"operation": "feedback", "result": response})
+    await rabbitmq.channel.default_exchange.publish(
+        aio_pika.Message(
+            body=json.dumps({"operation": "feedback", "result": response}).encode(),
+            correlation_id=message.correlation_id,
+            reply_to=message.reply_to
+        ),
+        routing_key=message.reply_to
     )
 
-    ch.basic_ack(delivery_tag=method.delivery_tag)
-    logger.info(f"Response sent for correlation_id: {props.correlation_id}")
-    logger.info(f"Response sent to: {props.reply_to}")
-    logger.info(f"response: {response}")
+    logger.info(f"Response sent for correlation_id: {message.correlation_id}")
+    logger.info(f"Response sent to: {message.reply_to}")
+    logger.debug(f"response: {response}")
 
+async def main():
+    logger.info(f"main fucntion (re)starting\n")
+    # rabbitmq is an instance of the RabbitMQ class defined earlier
+    await rabbitmq.connect()
 
-channel.basic_qos(prefetch_count=1)
-channel.basic_consume(queue=config['rabbitmqrequestqueue'], on_message_callback=on_request)
+    await rabbitmq.channel.set_qos(prefetch_count=20)
+    queue = await rabbitmq.channel.declare_queue(rabbitmq.queue, auto_delete=False)
 
-logger.info("Waiting for RPC requests")
-channel.start_consuming()
+    # Start consuming messages
+    asyncio.create_task(queue.consume(on_request))
+
+    logger.info("Waiting for RPC requests")
+
+    # Create an Event that is never set, and wait for it forever
+    # This will keep the program running indefinitely
+    stop_event = asyncio.Event()
+    await stop_event.wait()
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
+

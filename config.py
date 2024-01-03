@@ -28,5 +28,8 @@ website_generated_path = local_path + '/website/generated'
 website_generated_path2 = local_path + '/website2/generated'
 vectordb_path = local_path + "/vectordb"
 generate_website = True
+chunk_size = 3000
+# token limit for for the completion of the chat model, this does not include the overall context length
+max_token_limit = 2000
 
-LOG_LEVEL = 'DEBUG'  # Possible values: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+LOG_LEVEL = 'INFO'  # Possible values: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
