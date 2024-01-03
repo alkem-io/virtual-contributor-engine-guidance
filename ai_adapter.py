@@ -15,7 +15,7 @@ import logging
 import sys
 import io
 import def_ingest
-from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, generate_website, LOG_LEVEL, max_token_limit
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, LOG_LEVEL, max_token_limit
 
 import os
 
@@ -33,8 +33,8 @@ c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.WARNING)
 
 # Create formatters and add them to handlers
-c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%m-%d %H:%M:%S')
+f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%m-%d %H:%M:%S')
 c_handler.setFormatter(c_format)
 f_handler.setFormatter(f_format)
 
@@ -42,7 +42,7 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
-logger.info(f"log level ai_utils: {LOG_LEVEL}")
+logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
 
 # verbose output for LLMs
 if LOG_LEVEL=="DEBUG":
@@ -116,17 +116,26 @@ embeddings = AzureOpenAIEmbeddings(
     chunk_size=1
 )
 
-# Check if the vector database exists
-if os.path.exists(vectordb_path+"/index.pkl"):
-    logger.info(f"The file vector database is present")
-else:
-    # ingest data
-    if generate_website:
-        def_ingest.clone_and_generate(config['website_repo'], website_generated_path, website_source_path)
-        def_ingest.clone_and_generate(config['website_repo2'], website_generated_path2, website_source_path2)
-    def_ingest.mainapp(config['source_website'], config['source_website2'])
+def load_vector_db():
+    """
+    Purpose:
+        Load the data into the vector database.
+    Args:
+        
+    Returns:
+        vectorstore: the vectorstore object
+    """
+    # Check if the vector database exists
+    if os.path.exists(vectordb_path + os.sep + "index.pkl"):
+        logger.info(f"The file vector database is present")
+    else:
+        logger.info(f"The file vector database is not present, ingesting")
+        def_ingest.ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)    
 
-vectorstore = FAISS.load_local(vectordb_path, embeddings)
+    return FAISS.load_local(vectordb_path, embeddings)
+
+vectorstore = load_vector_db()
+
 retriever = vectorstore.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": .5})
 
 chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
