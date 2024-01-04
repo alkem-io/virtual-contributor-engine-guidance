@@ -124,10 +124,9 @@ def reset(user_id):
     return "Reset function executed"
 
 async def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
-    async with ingestion_lock:
-        def_ingest.clone_and_generate(website_repo, destination_path, source_path)
-        def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
-        def_ingest.ingest(source_url, source_url2)
+    def_ingest.clone_and_generate(website_repo, destination_path, source_path)
+    def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
+    def_ingest.create_vector_db(source_url, source_url2)
 
     return "Ingest function executed"
 
@@ -166,8 +165,16 @@ async def process_message(message: aio_pika.IncomingMessage):
     operation = body['pattern']['cmd']
 
     if operation == 'ingest':
-        async with ingestion_lock:
-            response = await ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
+        try:
+            logger.info("Attempting to acquire lock and run ingest operation")
+            async with ingestion_lock:
+                logger.info("Lock acquired, running ingest operation")
+                await ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
+                logger.info("Ingest operation completed")
+            response = "Ingest successful"
+        except Exception as e:
+            logger.error(f"Ingest failed: Exception: {e}")
+            response = "Ingest failed"
     else:
         if user_id is None:
             response = "userId not provided"

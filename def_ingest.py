@@ -191,7 +191,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
         if (result_switch.returncode != 0):
             logger.error(f"Unable to switch {website_repo} repository: {result_switch.stderr}")
     else:
-        logger.info(f"...git directory does not exist, clonging in {os.getcwd()}")# Repository doesn't exist, perform a git clone
+        logger.info(f"...git directory does not exist, cloning in {os.getcwd()}")# Repository doesn't exist, perform a git clone
         clone_command = ['git', 'clone', "https://" + github_user + ":" + github_pat + "@" + website_repo, source_path]
         result_clone = subprocess.run(clone_command, capture_output=True, text=True)
         if (result_clone.returncode != 0):
