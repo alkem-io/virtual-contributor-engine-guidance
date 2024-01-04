@@ -2,7 +2,7 @@ from langchain.callbacks import get_openai_callback
 from langchain.memory import ConversationBufferMemory
 #import pika
 import json
-import ai_utils
+import ai_adapter
 import logging
 import sys
 import io
@@ -11,7 +11,7 @@ import os
 import def_ingest
 import aio_pika
 from aio_pika import connect, RobustConnection, ExchangeType
-from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, generate_website, local_path, LOG_LEVEL
+from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, LOG_LEVEL
 
 # configure logging
 logger = logging.getLogger(__name__)
@@ -27,8 +27,8 @@ c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.WARNING)
 
 # Create formatters and add them to handlers
-c_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+c_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%m-%d %H:%M:%S')
+f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%m-%d %H:%M:%S')
 c_handler.setFormatter(c_format)
 f_handler.setFormatter(f_format)
 
@@ -36,7 +36,7 @@ f_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
-logger.info(f"log level app: {LOG_LEVEL}")
+logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
 
 # define variables
 user_data = {}
@@ -84,7 +84,7 @@ async def query(user_id, query, language_code):
             reset(user_id)
             #chat_history=[]
 
-        user_data[user_id]['language'] = ai_utils.get_language_by_code(language_code)
+        user_data[user_id]['language'] = ai_adapter.get_language_by_code(language_code)
 
         logger.debug(f"\nlanguage: {user_data[user_id]['language']}\n")
         #chat_history = user_data[user_id]['chat_history']
@@ -92,7 +92,7 @@ async def query(user_id, query, language_code):
 
 
         with get_openai_callback() as cb:
-            llm_result = await ai_utils.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
+            llm_result = await ai_adapter.query_chain({"question": query}, {"language": user_data[user_id]['language']}, user_data[user_id]['chat_history'])
             answer = llm_result['answer']
 
 
@@ -124,10 +124,9 @@ def reset(user_id):
     return "Reset function executed"
 
 async def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
-    async with ingestion_lock:
-        def_ingest.clone_and_generate(website_repo, destination_path, source_path)
-        def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
-        def_ingest.mainapp(source_url, source_url2)
+    def_ingest.clone_and_generate(website_repo, destination_path, source_path)
+    def_ingest.clone_and_generate(website_repo2, destination_path2, source_path2)
+    def_ingest.create_vector_db(source_url, source_url2)
 
     return "Ingest function executed"
 
@@ -166,8 +165,16 @@ async def process_message(message: aio_pika.IncomingMessage):
     operation = body['pattern']['cmd']
 
     if operation == 'ingest':
-        async with ingestion_lock:
-            response = await ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
+        try:
+            logger.info("Attempting to acquire lock and run ingest operation")
+            async with ingestion_lock:
+                logger.info("Lock acquired, running ingest operation")
+                await ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)
+                logger.info("Ingest operation completed")
+            response = "Ingest successful"
+        except Exception as e:
+            logger.error(f"Ingest failed: Exception: {e}")
+            response = "Ingest failed"
     else:
         if user_id is None:
             response = "userId not provided"

@@ -22,12 +22,12 @@ config = {
 local_path = config['local_path']
 github_user = config['github_user']
 github_pat = config['github_pat']
-website_source_path = local_path + '/website/source'
-website_source_path2 = local_path + '/website2/source'
-website_generated_path = local_path + '/website/generated'
-website_generated_path2 = local_path + '/website2/generated'
-vectordb_path = local_path + "/vectordb"
-generate_website = True
+website_source_path = local_path + os.sep + 'website' + os.sep + 'source'
+website_source_path2 = local_path + os.sep + 'website2' + os.sep + 'source'
+website_generated_path = local_path + os.sep + 'website' + os.sep + 'generated'
+website_generated_path2 = local_path + os.sep + 'website2' + os.sep + 'generated'
+vectordb_path = local_path + os.sep + 'vectordb'
+
 chunk_size = 3000
 # token limit for for the completion of the chat model, this does not include the overall context length
 max_token_limit = 2000
