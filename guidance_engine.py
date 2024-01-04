@@ -10,6 +10,7 @@ import asyncio
 import os
 import def_ingest
 import aio_pika
+import aiormq
 from aio_pika import connect, RobustConnection, ExchangeType
 from config import config, website_source_path, website_generated_path, website_source_path2, website_generated_path2, vectordb_path, local_path, LOG_LEVEL
 
@@ -190,18 +191,25 @@ async def process_message(message: aio_pika.IncomingMessage):
             else:
                 response = "Unknown function"
 
-    await rabbitmq.channel.default_exchange.publish(
-        aio_pika.Message(
-            body=json.dumps({"operation": "feedback", "result": response}).encode(),
-            correlation_id=message.correlation_id,
-            reply_to=message.reply_to
-        ),
-        routing_key=message.reply_to
-    )
+    try:
+        if rabbitmq.connection.is_closed or rabbitmq.channel.is_closed:
+            logger.error("Connection or channel is not open. Cannot publish message.")
+            return
 
-    logger.info(f"Response sent for correlation_id: {message.correlation_id}")
-    logger.info(f"Response sent to: {message.reply_to}")
-    logger.debug(f"response: {response}")
+        await rabbitmq.channel.default_exchange.publish(
+            aio_pika.Message(
+                body=json.dumps({"operation": "feedback", "result": response}).encode(),
+                correlation_id=message.correlation_id,
+                reply_to=message.reply_to
+            ),
+            routing_key=message.reply_to
+        )
+        logger.info(f"Response sent for correlation_id: {message.correlation_id}")
+        logger.info(f"Response sent to: {message.reply_to}")
+        logger.debug(f"response: {response}")
+    except (aio_pika.exceptions.AMQPError, asyncio.exceptions.CancelledError, aiormq.exceptions.ChannelInvalidStateError) as e:
+        logger.error(f"Failed to publish message due to a RabbitMQ error: {e}")
+
 
 async def main():
     logger.info(f"main fucntion (re)starting\n")
