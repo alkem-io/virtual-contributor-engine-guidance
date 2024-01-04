@@ -1,16 +1,16 @@
 [tool.poetry]
-name = "alkemio-guidance-engine"
-version = "0.5.0"
-description = "Alkemio Generative AI Guidance Engne"
-authors = ["Alkemio Foundation <info@alkem.io>"]
+name = "guidance-engine"
+version = "0.5.2"
+description = "Alkemio Generative AI Guidance Engine"
+authors = ["Alkemio BV <info@alkem.io>"]
 license = "EUPL-1.2"
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-langchain = "^0.0.351"
-langchain-core= "^0.1"
-langchain-community = ">=0.0.2"
+langchain = "^0.0.354"
+langchain-core= "^0.1.5"
+langchain-community = ">=0.0.8"
 python-dotenv = "^1.0.0"
 faiss-cpu = "^1.7.4"
 openai = "^1.3.8"
