@@ -26,7 +26,7 @@ logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
 
 # Create handlers
 c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
-f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path), 'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.WARNING)
@@ -102,13 +102,13 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
     """
     # Transform
     bs_transformer = BeautifulSoupTransformer()
-    
+
     # Get all links from the sitemaps
     logger.info(f"generating html: {local_source_path}, {source_website_url}")
     full_sitemap_list = extract_urls_from_sitemap(website_generated_path)
 
-    exclusion_list = [os.sep + 'tag' + os.sep, 
-                      os.sep + 'category' + os.sep, 
+    exclusion_list = [os.sep + 'tag' + os.sep,
+                      os.sep + 'category' + os.sep,
                       os.sep + 'help' + os.sep + 'index']
 
     data = []
@@ -126,7 +126,10 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
                 continue
             document = loader.load()
             # note h5 and h6 tags for our website contain a lot of irrelevant metadata
-            doc_transformed = bs_transformer.transform_documents(document, tags_to_extract=["p", "article", "title", "h1"], unwanted_tags=["h5", "h6"], remove_lines=True)
+            doc_transformed = bs_transformer.transform_documents(
+                document, tags_to_extract=[
+                    "p", "article", "title", "h1"], unwanted_tags=[
+                    "h5", "h6"], remove_lines=True)
             body_text = doc_transformed[0]
 
             # first remove duplicate spaces, then remove duplicate '\n\n', then remove duplicate '\n \n '
@@ -139,11 +142,11 @@ def read_and_parse_html(local_source_path, source_website_url, website_generated
                 data.append(body_text)
                 included_files.append(file_name)
             else:
-                #logger.info(f"document too small, not adding: {body_text.page_content}\n")
+                # logger.info(f"document too small, not adding: {body_text.page_content}\n")
                 excluded_files.append(file_name)
         except Exception as e:
-             # logger.error(f"...unable to process file: {str(e)}")
-             error_files.append(file_name)
+            # logger.error(f"...unable to process file: {str(e)}")
+            error_files.append(file_name)
 
     logger.info(f"==> Returning {len(included_files)} files; {len(error_files)} gave errors + {len(excluded_files)} files were skipped")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_size/5)
@@ -169,7 +172,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
         destination_path: path to directory containing generated html files
         source_path: path to directory containing the checked out github repo
     Returns:
-        
+
     """
 
     logger.info(f"About to generate website: {website_repo}")
@@ -179,7 +182,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
     os.chdir(source_path)
     git_switch_command = ['git', 'switch', branch]
     git_directory = os.path.join(source_path, '.git')
-    # Check if the repository already exists in the source_path    
+    # Check if the repository already exists in the source_path
     if os.path.exists(git_directory):
         # Repository exists, perform a git pull to update it
         logger.info(f"...git directory exists, pulling in {os.getcwd()}")
@@ -191,7 +194,7 @@ def clone_and_generate(website_repo, destination_path, source_path):
         if (result_switch.returncode != 0):
             logger.error(f"Unable to switch {website_repo} repository: {result_switch.stderr}")
     else:
-        logger.info(f"...git directory does not exist, cloning in {os.getcwd()}")# Repository doesn't exist, perform a git clone
+        logger.info(f"...git directory does not exist, cloning in {os.getcwd()}")  # Repository doesn't exist, perform a git clone
         clone_command = ['git', 'clone', "https://" + github_user + ":" + github_pat + "@" + website_repo, source_path]
         result_clone = subprocess.run(clone_command, capture_output=True, text=True)
         if (result_clone.returncode != 0):
@@ -255,5 +258,5 @@ def create_vector_db(source_website_url, source_website_url2) -> None:
 
 # only execute if this is the main program run (so not imported)
 if __name__ == "__main__":
-    ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, 
-           config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)   
+    ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path,
+           config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)

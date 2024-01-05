@@ -27,7 +27,7 @@ logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
 
 # Create handlers
 c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
-f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path), 'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.WARNING)
@@ -45,7 +45,7 @@ logger.addHandler(f_handler)
 logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
 
 # verbose output for LLMs
-if LOG_LEVEL=="DEBUG":
+if LOG_LEVEL == "DEBUG":
     verbose_models = True
 else:
     verbose_models = False
@@ -78,11 +78,11 @@ def get_language_by_code(language_code):
 chat_template = """
 You are a friendly, talkative, chatty and warm conversational agent. Use the following step-by-step instructions to respond to user inputs.
 1 - If the question is in a different language than English, translate the question to English before answering.
-2 - The text provided in the info delimited by triple pluses may contain questions. Remove those questions from the website. 
-3 - Provide an up to three paragraghs answer that is engaging, accurate and exthausive, taking into account the info delimited by triple pluses. 
+2 - The text provided in the info delimited by triple pluses may contain questions. Remove those questions from the website.
+3 - Provide an up to three paragraghs answer that is engaging, accurate and exthausive, taking into account the info delimited by triple pluses.
     If the answer cannot be found within the info, write 'I could not find an answer to your question'.
 4 - Only return the answer from step 3, do not show any code or additional information.
-5 - Answer the question in the {language} language. 
+5 - Answer the question in the {language} language.
 +++
 Info:
 {context}
@@ -108,7 +108,7 @@ chat_prompt = ChatPromptTemplate.from_template(chat_template)
 
 
 generic_llm = AzureOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                            temperature=0, verbose=verbose_models)
+                          temperature=0, verbose=verbose_models)
 
 embeddings = AzureOpenAIEmbeddings(
     azure_deployment=config['embeddings_deployment_name'],
@@ -121,7 +121,7 @@ def load_vector_db():
     Purpose:
         Load the data into the vector database.
     Args:
-        
+
     Returns:
         vectorstore: the vectorstore object
     """
@@ -130,24 +130,34 @@ def load_vector_db():
         logger.info(f"The file vector database is present")
     else:
         logger.info(f"The file vector database is not present, ingesting")
-        def_ingest.ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)    
+        def_ingest.ingest(
+            config['source_website'],
+            config['website_repo'],
+            website_generated_path,
+            website_source_path,
+            config['source_website2'],
+            config['website_repo2'],
+            website_generated_path2,
+            website_source_path2)
 
     return FAISS.load_local(vectordb_path, embeddings)
+
 
 vectorstore = load_vector_db()
 
 retriever = vectorstore.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": .5})
 
 chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                            temperature=os.environ["AI_MODEL_TEMPERATURE"],
-                            max_tokens=max_token_limit, verbose=verbose_models)
+                           temperature=os.environ["AI_MODEL_TEMPERATURE"],
+                           max_tokens=max_token_limit, verbose=verbose_models)
 
 condense_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                            temperature=0.1,
-                            verbose=verbose_models)
+                               temperature=0.1,
+                               verbose=verbose_models)
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
+
 
 DEFAULT_DOCUMENT_PROMPT = PromptTemplate.from_template(template="{page_content}")
 
@@ -161,7 +171,7 @@ def _combine_documents(
 async def query_chain(question, language, chat_history):
 
     # check whether the chat history is empty
-    if  chat_history.buffer == []:
+    if chat_history.buffer == []:
         first_call = True
     else:
         first_call = False
@@ -176,7 +186,7 @@ async def query_chain(question, language, chat_history):
     # This adds a "memory" key to the input object
     loaded_memory = RunnablePassthrough.assign(
         chat_history=RunnableLambda(chat_history.load_memory_variables) | itemgetter("history"),
-    )    
+    )
 
     logger.debug(f"loaded memory {loaded_memory}\n")
     logger.debug(f"chat history {chat_history}\n")
@@ -208,7 +218,6 @@ async def query_chain(question, language, chat_history):
         "question": lambda x: x["standalone_question"],
     }
 
-
     # Now we construct the inputs for the final prompt
     final_inputs = {
         "context": lambda x: _combine_documents(x["docs"]),
@@ -221,7 +230,6 @@ async def query_chain(question, language, chat_history):
         "answer": final_inputs | chat_prompt | chat_llm,
         "docs": itemgetter("docs"),
     }
-
 
     # And now we put it all together in a 'RunnableBranch', so we only invoke the rephrasing part when the chat history is not empty
     final_chain = RunnableBranch(
