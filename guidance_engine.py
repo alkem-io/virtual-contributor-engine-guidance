@@ -113,7 +113,7 @@ async def query(user_id, query, language_code):
         user_data[user_id]['chat_history'].save_context({"question": query}, {"answer": answer.content})
         logger.debug(f"new chat history {user_data[user_id]['chat_history']}\n")
         response = json.dumps({
-            "question": query, "answer": str(answer), "sources": sources, "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
+            "question": query, "answer": str(answer.content), "sources": sources, "prompt_tokens": cb.prompt_tokens, "completion_tokens": cb.completion_tokens, "total_tokens": cb.total_tokens, "total_cost": cb.total_cost
         }
         )
 
