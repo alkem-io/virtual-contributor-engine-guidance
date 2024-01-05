@@ -76,15 +76,15 @@ def get_language_by_code(language_code):
 
 
 chat_template = """
-You are a friendly conversational agent. Use the following step-by-step instructions to respond to user inputs.
-1 - The text provided in the context delimited by triple pluses may contain questions. Remove those questions from the context. 
-2 - Provide an up to three paragraghs answer that is accurate and exthausive, taking into account the context delimited by triple pluses.
-    If the answer cannot be found within the context, write 'I could not find an answer to your question'.
-3 - Only return the answer from step 2, do not show any code or additional information.
-4 - If the question is in a different language than English, translate the question to English before answering.
+You are a friendly, talkative, chatty and warm conversational agent. Use the following step-by-step instructions to respond to user inputs.
+1 - If the question is in a different language than English, translate the question to English before answering.
+2 - The text provided in the info delimited by triple pluses may contain questions. Remove those questions from the website. 
+3 - Provide an up to three paragraghs answer that is engaging, accurate and exthausive, taking into account the info delimited by triple pluses. 
+    If the answer cannot be found within the info, write 'I could not find an answer to your question'.
+4 - Only return the answer from step 3, do not show any code or additional information.
 5 - Answer the question in the {language} language. 
 +++
-Context:
+Info:
 {context}
 +++
 Question: {question}
@@ -143,7 +143,7 @@ chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
                             max_tokens=max_token_limit, verbose=verbose_models)
 
 condense_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                            temperature=0,
+                            temperature=0.1,
                             verbose=verbose_models)
 
 def format_docs(docs):
