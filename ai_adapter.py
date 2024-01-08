@@ -1,9 +1,9 @@
-from langchain.embeddings import AzureOpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.llms import AzureOpenAI
+from langchain_openai import AzureOpenAI
 from langchain.prompts.prompt import PromptTemplate
 from langchain.prompts import ChatPromptTemplate
-from langchain.chat_models import AzureChatOpenAI
+from langchain_openai import AzureChatOpenAI
 from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain.schema import format_document

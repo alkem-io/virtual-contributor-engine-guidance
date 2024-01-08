@@ -3,7 +3,7 @@ import logging
 import sys
 import io
 import re
-from langchain.embeddings import AzureOpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.callbacks import get_openai_callback
