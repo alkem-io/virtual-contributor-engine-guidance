@@ -1,5 +1,5 @@
 from langchain.callbacks import get_openai_callback
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferWindowMemory
 # import pika
 import json
 import ai_adapter
@@ -81,7 +81,7 @@ async def query(user_id, query, language_code):
 
         if user_id not in user_data:
             user_data[user_id] = {}
-            user_data[user_id]['chat_history'] = ConversationBufferMemory(return_messages=True, output_key="answer", input_key="question")
+            user_data[user_id]['chat_history'] = ConversationBufferWindowMemory(k=3, return_messages=True, output_key="answer", input_key="question")
             # user_chain[user_id]=ai_utils.setup_chain()
             reset(user_id)
             # chat_history=[]

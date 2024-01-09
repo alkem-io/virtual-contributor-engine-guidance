@@ -76,17 +76,22 @@ def get_language_by_code(language_code):
 
 
 chat_system_template = """
-You are a friendly, talkative, chatty and warm conversational agent. Use the following step-by-step instructions to respond to user inputs.
+You are a friendly and talkative conversational agent, tasked with answering questions about Alkemio.\
+Use the following step-by-step instructions to respond to user inputs.
 1 - If the question is in a different language than English, translate the question to English before answering.
-2 - The text provided in the info delimited by triple pluses may contain questions. Remove those questions from the website.
-3 - Provide an up to three paragraghs answer that is engaging, accurate and exthausive, taking into account the info delimited by triple pluses.
-    If the answer cannot be found within the info, write 'I could not find an answer to your question'.
+2 - The text provided in the context delimited by triple pluses is retrieved from the Alkemio website, not part of the conversation with the user.
+3 - Provide an answer of 250 words or less that is engaging, accurate and exthausive, taking into account the context delimited by triple pluses.
+    If the answer cannot be found within the context, write 'Hmm, I am not sure'.
 4 - Only return the answer from step 3, do not show any code or additional information.
 5 - Answer the question in the {language} language.
 +++
-Info:
+context:
 {context}
 +++
+
+REMEMBER: If there is no relevant information within the context, just say "Hmm, I am \
+not sure." Don't try to make up an answer. Anything between in preceding context \
+is retrieved from the website, not part of the conversation with the user.\
 """
 
 condense_question_template = """"
@@ -192,8 +197,8 @@ async def query_chain(question, language, chat_history):
         chat_history=RunnableLambda(chat_history.load_memory_variables) | itemgetter("history"),
     )
 
-    logger.info(f"loaded memory {loaded_memory}\n")
-    logger.info(f"chat history {chat_history}\n")
+    logger.debug(f"loaded memory {loaded_memory}\n")
+    logger.debug(f"chat history {chat_history}\n")
 
 
     # Now we calculate the standalone question if the chat_history is not empty
