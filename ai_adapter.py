@@ -2,7 +2,7 @@ from langchain_openai import AzureOpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain_openai import AzureOpenAI
 from langchain.prompts.prompt import PromptTemplate
-from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_openai import AzureChatOpenAI
 from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
@@ -75,7 +75,7 @@ def get_language_by_code(language_code):
     return language_mapping.get(language_code, 'English')
 
 
-chat_template = """
+chat_system_template = """
 You are a friendly, talkative, chatty and warm conversational agent. Use the following step-by-step instructions to respond to user inputs.
 1 - If the question is in a different language than English, translate the question to English before answering.
 2 - The text provided in the info delimited by triple pluses may contain questions. Remove those questions from the website.
@@ -87,7 +87,6 @@ You are a friendly, talkative, chatty and warm conversational agent. Use the fol
 Info:
 {context}
 +++
-Question: {question}
 """
 
 condense_question_template = """"
@@ -104,7 +103,13 @@ Standalone question:
 
 condense_question_prompt = PromptTemplate.from_template(condense_question_template)
 
-chat_prompt = ChatPromptTemplate.from_template(chat_template)
+chat_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", chat_system_template),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{question}"),
+    ]
+)
 
 
 generic_llm = AzureOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
@@ -167,7 +172,6 @@ def _combine_documents(
     doc_strings = [format_document(doc, document_prompt) for doc in docs]
     return document_separator.join(doc_strings)
 
-
 async def query_chain(question, language, chat_history):
 
     # check whether the chat history is empty
@@ -188,8 +192,9 @@ async def query_chain(question, language, chat_history):
         chat_history=RunnableLambda(chat_history.load_memory_variables) | itemgetter("history"),
     )
 
-    logger.debug(f"loaded memory {loaded_memory}\n")
-    logger.debug(f"chat history {chat_history}\n")
+    logger.info(f"loaded memory {loaded_memory}\n")
+    logger.info(f"chat history {chat_history}\n")
+
 
     # Now we calculate the standalone question if the chat_history is not empty
     standalone_question = {
@@ -221,6 +226,7 @@ async def query_chain(question, language, chat_history):
     # Now we construct the inputs for the final prompt
     final_inputs = {
         "context": lambda x: _combine_documents(x["docs"]),
+        "chat_history" : lambda x: chat_history.buffer,
         "question": itemgetter("question"),
         "language": lambda x: language['language'],
     }
