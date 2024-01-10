@@ -92,14 +92,23 @@ context:
 """
 
 condense_question_template = """"
-Combine the chat history delimited by triple pluses and follow-up question into a single standalone question that does justice to the follow-up question. Do only return the standalone question, do not return any other information.
+Create a single sentence standalone query based on the human input, using the following step-by-step instructions:
+
+1. If the human input is expressing a sentiment, delete and ignore the chat history delimited by triple pluses. \
+Then, return the human input containing the sentiment as the standalone query. Do NOT in any way respond to the human input, \
+simply repeat it.
+2. Otherwise, combine the chat history delimited by triple pluses and human input into a single standalone query that does \
+justice to the human input.
+3. Do only return the standalone query, do not return any other information. Never return the chat history delimited by triple pluses.
 
 +++
-Chat History: {chat_history}
+chat history:
+{chat_history}
 +++
-Follow-up question: {question}
+
+Human input: {question}
 ---
-Standalone question:
+Standalone query:
 """
 
 
@@ -159,7 +168,7 @@ chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
                            max_tokens=max_token_limit, verbose=verbose_models)
 
 condense_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                               temperature=0.1,
+                               temperature=0,
                                verbose=verbose_models)
 
 def format_docs(docs):
