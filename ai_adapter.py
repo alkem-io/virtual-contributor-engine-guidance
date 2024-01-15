@@ -1,9 +1,9 @@
-from langchain.embeddings import AzureOpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.llms import AzureOpenAI
+from langchain_openai import AzureOpenAI
 from langchain.prompts.prompt import PromptTemplate
-from langchain.prompts import ChatPromptTemplate
-from langchain.chat_models import AzureChatOpenAI
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+from langchain_openai import AzureChatOpenAI
 from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain.schema import format_document
@@ -27,7 +27,7 @@ logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
 
 # Create handlers
 c_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, line_buffering=True))
-f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path),'app.log'))
+f_handler = logging.FileHandler(os.path.join(os.path.expanduser(local_path), 'app.log'))
 
 c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
 f_handler.setLevel(logging.WARNING)
@@ -45,7 +45,7 @@ logger.addHandler(f_handler)
 logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
 
 # verbose output for LLMs
-if LOG_LEVEL=="DEBUG":
+if LOG_LEVEL == "DEBUG":
     verbose_models = True
 else:
     verbose_models = False
@@ -75,40 +75,56 @@ def get_language_by_code(language_code):
     return language_mapping.get(language_code, 'English')
 
 
-chat_template = """
-You are a friendly conversational agent. Use the following step-by-step instructions to respond to user inputs.
-1 - The text provided in the context delimited by triple pluses may contain questions. Remove those questions from the context. 
-2 - Provide an up to three paragraghs answer that is accurate and exthausive, taking into account the context delimited by triple pluses.
-    If the answer cannot be found within the context, write 'I could not find an answer to your question'.
-3 - Only return the answer from step 2, do not show any code or additional information.
-4 - If the question is in a different language than English, translate the question to English before answering.
-5 - Answer the question in the {language} language. 
+chat_system_template = """
+You are a friendly and talkative conversational agent, tasked with answering questions about Alkemio.
+Use the following step-by-step instructions to respond to user inputs:
+
+1 - If the question is in a different language than English, translate the question to English before answering.
+2 - The text provided in the context delimited by triple pluses is retrieved from the Alkemio website is not part of the conversation with the user.
+3 - Provide an answer of 250 words or less that is professional, engaging, accurate and exthausive, based on the context delimited by triple pluses. \
+If the answer cannot be found within the context, write 'Hmm, I am not sure'.
+4 - Only return the answer from step 3, do not show any code or additional information.
+5 - Answer the question in the {language} language.
 +++
-Context:
+context:
 {context}
 +++
-Question: {question}
 """
 
 condense_question_template = """"
-Combine the chat history delimited by triple pluses and follow-up question into a single standalone question that does justice to the follow-up question. Do only return the standalone question, do not return any other information.
+Create a single sentence standalone query based on the human input, using the following step-by-step instructions:
+
+1. If the human input is expressing a sentiment, delete and ignore the chat history delimited by triple pluses. \
+Then, return the human input containing the sentiment as the standalone query. Do NOT in any way respond to the human input, \
+simply repeat it.
+2. Otherwise, combine the chat history delimited by triple pluses and human input into a single standalone query that does \
+justice to the human input.
+3. Do only return the standalone query, do not return any other information. Never return the chat history delimited by triple pluses.
 
 +++
-Chat History: {chat_history}
+chat history:
+{chat_history}
 +++
-Follow-up question: {question}
+
+Human input: {question}
 ---
-Standalone question:
+Standalone query:
 """
 
 
 condense_question_prompt = PromptTemplate.from_template(condense_question_template)
 
-chat_prompt = ChatPromptTemplate.from_template(chat_template)
+chat_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", chat_system_template),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human", "{question}"),
+    ]
+)
 
 
 generic_llm = AzureOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                            temperature=0, verbose=verbose_models)
+                          temperature=0, verbose=verbose_models)
 
 embeddings = AzureOpenAIEmbeddings(
     azure_deployment=config['embeddings_deployment_name'],
@@ -121,7 +137,7 @@ def load_vector_db():
     Purpose:
         Load the data into the vector database.
     Args:
-        
+
     Returns:
         vectorstore: the vectorstore object
     """
@@ -130,24 +146,34 @@ def load_vector_db():
         logger.info(f"The file vector database is present")
     else:
         logger.info(f"The file vector database is not present, ingesting")
-        def_ingest.ingest(config['source_website'], config['website_repo'], website_generated_path, website_source_path, config['source_website2'], config['website_repo2'], website_generated_path2, website_source_path2)    
+        def_ingest.ingest(
+            config['source_website'],
+            config['website_repo'],
+            website_generated_path,
+            website_source_path,
+            config['source_website2'],
+            config['website_repo2'],
+            website_generated_path2,
+            website_source_path2)
 
     return FAISS.load_local(vectordb_path, embeddings)
+
 
 vectorstore = load_vector_db()
 
 retriever = vectorstore.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": .5})
 
 chat_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                            temperature=os.environ["AI_MODEL_TEMPERATURE"],
-                            max_tokens=max_token_limit, verbose=verbose_models)
+                           temperature=os.environ["AI_MODEL_TEMPERATURE"],
+                           max_tokens=max_token_limit, verbose=verbose_models)
 
 condense_llm = AzureChatOpenAI(azure_deployment=os.environ["LLM_DEPLOYMENT_NAME"],
-                            temperature=0,
-                            verbose=verbose_models)
+                               temperature=0,
+                               verbose=verbose_models)
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
+
 
 DEFAULT_DOCUMENT_PROMPT = PromptTemplate.from_template(template="{page_content}")
 
@@ -157,11 +183,10 @@ def _combine_documents(
     doc_strings = [format_document(doc, document_prompt) for doc in docs]
     return document_separator.join(doc_strings)
 
-
 async def query_chain(question, language, chat_history):
 
     # check whether the chat history is empty
-    if  chat_history.buffer == []:
+    if chat_history.buffer == []:
         first_call = True
     else:
         first_call = False
@@ -176,10 +201,11 @@ async def query_chain(question, language, chat_history):
     # This adds a "memory" key to the input object
     loaded_memory = RunnablePassthrough.assign(
         chat_history=RunnableLambda(chat_history.load_memory_variables) | itemgetter("history"),
-    )    
+    )
 
     logger.debug(f"loaded memory {loaded_memory}\n")
     logger.debug(f"chat history {chat_history}\n")
+
 
     # Now we calculate the standalone question if the chat_history is not empty
     standalone_question = {
@@ -208,10 +234,10 @@ async def query_chain(question, language, chat_history):
         "question": lambda x: x["standalone_question"],
     }
 
-
     # Now we construct the inputs for the final prompt
     final_inputs = {
         "context": lambda x: _combine_documents(x["docs"]),
+        "chat_history" : lambda x: chat_history.buffer,
         "question": itemgetter("question"),
         "language": lambda x: language['language'],
     }
@@ -221,7 +247,6 @@ async def query_chain(question, language, chat_history):
         "answer": final_inputs | chat_prompt | chat_llm,
         "docs": itemgetter("docs"),
     }
-
 
     # And now we put it all together in a 'RunnableBranch', so we only invoke the rephrasing part when the chat history is not empty
     final_chain = RunnableBranch(
