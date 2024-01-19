@@ -8,6 +8,7 @@ from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain.schema import format_document
 from langchain_core.messages import get_buffer_string
+from langchain_core.messages.ai import AIMessage
 from langchain_core.runnables import RunnableBranch
 
 from operator import itemgetter
@@ -254,6 +255,12 @@ async def query_chain(question, language, chat_history):
         loaded_memory | standalone_question | retrieved_documents_sa | answer,
     )
 
-    logger.debug(f"final chain {final_chain}\n")
-    result = await final_chain.ainvoke(question)
-    return {'answer': result['answer'], 'source_documents': result['docs']}
+    try:
+        logger.debug(f"final chain {final_chain}\n")
+        result = await final_chain.ainvoke(question)
+    except Exception as e:
+        logger.error(f"An error occurred while generating a response: {str(e)}")
+        # Handle the error appropriately here
+        return {'answer': AIMessage(content='An error occurred while generating a response.'), 'source_documents': []}
+    else:
+        return {'answer': result['answer'], 'source_documents': result['docs'] if result['docs'] else []}
