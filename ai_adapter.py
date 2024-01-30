@@ -101,7 +101,8 @@ Then, return the human input containing the sentiment as the standalone query. D
 simply repeat it.
 2. Otherwise, combine the chat history delimited by triple pluses and human input into a single standalone query that does \
 justice to the human input.
-3. Do only return the standalone query, do not return any other information. Never return the chat history delimited by triple pluses.
+3. Do only return the standalone query, do not try to respond to the user query and do not return any other information. \
+Never return the chat history delimited by triple pluses. 
 
 +++
 chat history:
