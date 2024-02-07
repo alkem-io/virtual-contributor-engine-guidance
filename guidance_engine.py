@@ -80,11 +80,7 @@ async def query(user_id, query, language_code):
         logger.info(f"\nQuery from user {user_id}: {query}\n")
 
         if user_id not in user_data:
-            user_data[user_id] = {}
-            user_data[user_id]['chat_history'] = ConversationBufferWindowMemory(k=3, return_messages=True, output_key="answer", input_key="question")
-            # user_chain[user_id]=ai_utils.setup_chain()
             reset(user_id)
-            # chat_history=[]
 
         user_data[user_id]['language'] = ai_adapter.get_language_by_code(language_code)
 
@@ -116,8 +112,10 @@ async def query(user_id, query, language_code):
         return response
 
 def reset(user_id):
+    if user_id not in user_data:
+        user_data[user_id] = {}
+        user_data[user_id]['chat_history'] = ConversationBufferWindowMemory(k=3, return_messages=True, output_key="answer", input_key="question")
     user_data[user_id]['chat_history'].clear()
-
     return "Reset function executed"
 
 async def ingest(source_url, website_repo, destination_path, source_path, source_url2, website_repo2, destination_path2, source_path2):
@@ -182,8 +180,10 @@ async def process_message(message: aio_pika.IncomingMessage):
                 else:
                     response = "Query parameter(s) not provided"
             elif operation == 'reset':
+                logger.info(f"reset user id: {user_id}\n\n")
                 response = reset(user_id)
             else:
+                logger.error(f"unknown function for user: {user_id}\n\n")
                 response = "Unknown function"
 
     try:

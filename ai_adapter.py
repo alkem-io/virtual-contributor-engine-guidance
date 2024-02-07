@@ -8,6 +8,7 @@ from langchain.schema import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain.schema import format_document
 from langchain_core.messages import get_buffer_string
+from langchain_core.messages.ai import AIMessage
 from langchain_core.runnables import RunnableBranch
 
 from operator import itemgetter
@@ -82,9 +83,10 @@ Use the following step-by-step instructions to respond to user inputs:
 1 - If the question is in a different language than English, translate the question to English before answering.
 2 - The text provided in the context delimited by triple pluses is retrieved from the Alkemio website is not part of the conversation with the user.
 3 - Provide an answer of 250 words or less that is professional, engaging, accurate and exthausive, based on the context delimited by triple pluses. \
-If the answer cannot be found within the context, write 'Hmm, I am not sure'.
-4 - Only return the answer from step 3, do not show any code or additional information.
-5 - Answer the question in the {language} language.
+If the answer cannot be found within the context, write 'Hmm, I am not sure'. 
+4 - If the question is not specifically about Alkemio or if the question is not professional write 'Unfortunately, I cannot answer that question'. 
+5 - Only return the answer from step 3, do not show any code or additional information.
+6 - Answer the question in the {language} language.
 +++
 context:
 {context}
@@ -99,7 +101,8 @@ Then, return the human input containing the sentiment as the standalone query. D
 simply repeat it.
 2. Otherwise, combine the chat history delimited by triple pluses and human input into a single standalone query that does \
 justice to the human input.
-3. Do only return the standalone query, do not return any other information. Never return the chat history delimited by triple pluses.
+3. Do only return the standalone query, do not try to respond to the user query and do not return any other information. \
+Never return the chat history delimited by triple pluses. 
 
 +++
 chat history:
@@ -254,6 +257,12 @@ async def query_chain(question, language, chat_history):
         loaded_memory | standalone_question | retrieved_documents_sa | answer,
     )
 
-    logger.debug(f"final chain {final_chain}\n")
-    result = await final_chain.ainvoke(question)
-    return {'answer': result['answer'], 'source_documents': result['docs']}
+    try:
+        logger.debug(f"final chain {final_chain}\n")
+        result = await final_chain.ainvoke(question)
+    except Exception as e:
+        logger.error(f"An error occurred while generating a response: {str(e)}")
+        # Handle the error appropriately here
+        return {'answer': AIMessage(content='An error occurred while generating a response.'), 'source_documents': []}
+    else:
+        return {'answer': result['answer'], 'source_documents': result['docs'] if result['docs'] else []}
