@@ -1,26 +1,26 @@
-version: '3'
+version: "3"
 
 networks:
   alkemio:
 
 services:
-  guidance-engine:
-      container_name: guidance-engine
-      volumes:
-          - '/dev/shm:/dev/shm'
-          - '~/alkemio/data:/home/alkemio/data'
-      env_file:
-        - .env
-      image: alkemio/guidance-engine:v0.5.1
-      depends_on:
-        rabbitmq:
-          condition: "service_healthy"
-      networks:
-        - alkemio
+  virtual-contributor-engine-guidance:
+    container_name: virtual-contributor-engine-guidance
+    volumes:
+      - "/dev/shm:/dev/shm"
+      - "~/alkemio/data:/home/alkemio/data"
+    env_file:
+      - .env
+    image: alkemio/virtual-contributor-engine-guidance:v0.5.1
+    depends_on:
+      rabbitmq:
+        condition: "service_healthy"
+    networks:
+      - alkemio
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: 'rabbitmq'
+    container_name: "rabbitmq"
     healthcheck:
       test: rabbitmq-diagnostics check_port_connectivity
       interval: 30s
