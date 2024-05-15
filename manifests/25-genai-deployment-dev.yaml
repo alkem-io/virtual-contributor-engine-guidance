@@ -2,23 +2,23 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   namespace: default
-  name: alkemio-guidance-engine-deployment
+  name: alkemio-virtual-contributor-engine-guidance-deployment
   labels:
-    app: alkemio-guidance-engine
+    app: alkemio-virtual-contributor-engine-guidance
 
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: alkemio-guidance-engine
+      app: alkemio-virtual-contributor-engine-guidance
   template:
     metadata:
       labels:
-        app: alkemio-guidance-engine
+        app: alkemio-virtual-contributor-engine-guidance
     spec:
       containers:
-        - name: alkemio-guidance-engine
-          image: alkemio.azurecr.io/alkemio-guidance-engine:latest
+        - name: alkemio-virtual-contributor-engine-guidance
+          image: alkemio.azurecr.io/alkemio-virtual-contributor-engine-guidance:latest
           env:
             - name: RABBITMQ_HOST
               valueFrom:

@@ -22,7 +22,7 @@ Training a LLM is prohibitatively expensive for most organisations, but for most
 ## Implementation
 
 The projects has been implemented as a container based micro-service with a RabbitMQ RPC. There is one RabbitMQ queue:
-- `alkemio-chat-guidance` - queue for submitting requests to the microservice
+- `alkemio-virtual-contributor-engine-guidance` - queue for submitting requests to the microservice
 
 The request payload consists of json with the following structure (example for a query):
 ```
@@ -56,16 +56,16 @@ There is a draft implementation for the interaction language of the model (this 
     'BG': 'Bulgarian',
     'UA': "Ukranian"
 
-*note: there is an earlier (outdated) RESTful implementation available at https://github.com/alkem-io/guidance-engine/tree/http-api
+*note: there is an earlier (outdated) RESTful implementation available at https://github.com/alkem-io/virtual-contributor-engine-guidance/tree/http-api
 
 ### Docker 
 The following command can be used to build the container from the Docker CLI (default architecture is amd64, so `--build-arg ARCHITECTURE=arm64` for amd64 builds):
-`docker build --build-arg ARCHITECTURE=arm64 --no-cache -t alkemio/guidance-engine:v0.4.0 .`
-`docker build --no-cache -t alkemio/guidance-engine:v0.2.0 .`
+`docker build --build-arg ARCHITECTURE=arm64 --no-cache -t alkemio/virtual-contributor-engine-guidance:v0.4.0 .`
+`docker build --no-cache -t alkemio/virtual-contributor-engine-guidance:v0.2.0 .`
 The Dockerfile has some self-explanatory configuration arguments.
 
 The following command can be used to start the container from the Docker CLI:
-`docker run --name guidance-engine -v /dev/shm:/dev/shm --env-file .env guidance-engine`
+`docker run --name virtual-contributor-engine-guidance -v /dev/shm:/dev/shm --env-file .env virtual-contributor-engine-guidance`
 where `.env` based on `.azure-template.env`
 Alternatively use `docker-compose up -d`.
 
@@ -89,7 +89,7 @@ with:
 - `LANGCHAIN_TRACING_V2` : enable Langchain tracing
 - `LANGCHAIN_ENDPOINT` : Langchain tracing endpoint (e.g. "https://api.smith.langchain.com")
 - `LANGCHAIN_API_KEY` : Langchain tracing API key
-- `LANGCHAIN_PROJECT` : Langchain tracing project name (e.g. "guidance-engine")
+- `LANGCHAIN_PROJECT` : Langchain tracing project name (e.g. "virtual-contributor-engine-guidance")
 
 You can find sample values in `.azure-template.env`. Configure them and create `.env` file with the updated settings.
 
@@ -97,7 +97,7 @@ You can find sample values in `.azure-template.env`. Configure them and create `
 The project requires Python & Poetry installed. The minimum version dependencies can be found at `pyproject.toml`.
 After installing Python & Poetry:
 * Install the dependencies: `poetry install`
-* Run using `poetry run python guidance_engine.py`
+* Run using `poetry run python virtual_contributor_engine_guidance.py`
 
 ### Linux
 The project requires Python 3.11 as a minimum and needs Go and Hugo installed for creating a local version of the website. See Go and Hugo documentation for installation instructions (only when running outside container)

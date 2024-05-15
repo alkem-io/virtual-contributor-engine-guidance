@@ -20,8 +20,8 @@ jobs:
 
       - name: "Build & Push image"
         run: |
-          docker build -f Dockerfile . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-guidance-engine:${{ github.sha }} -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-guidance-engine:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-guidance-engine:${{ github.sha }}
+          docker build -f Dockerfile . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-virtual-contributor-engine-guidance:${{ github.sha }} -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-virtual-contributor-engine-guidance:latest
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-virtual-contributor-engine-guidance:${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
           container-registry-url: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
           container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-          secret-name: alkemio-guidance-engine-secret
+          secret-name: alkemio-virtual-contributor-engine-guidance-secret
 
       - uses: azure/setup-kubectl@v3.2
         with:
@@ -56,6 +56,6 @@ jobs:
           manifests: |
             manifests/25-genai-deployment-dev.yaml
           images: |
-            ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-guidance-engine:${{ github.sha }}
+            ${{ secrets.REGISTRY_LOGIN_SERVER }}/alkemio-virtual-contributor-engine-guidance:${{ github.sha }}
           imagepullsecrets: |
-            alkemio-guidance-engine-secret
+            alkemio-virtual-contributor-engine-guidance-secret
