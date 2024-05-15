@@ -13,7 +13,7 @@ jobs:
       - name: Prepare
         id: prep
         run: |
-          DOCKER_IMAGE=alkemio/guidance-engine
+          DOCKER_IMAGE=alkemio/virtual-contributor-engine-guidance
           VERSION=noop
           if [ "${{ github.event_name }}" = "schedule" ]; then
             VERSION=nightly
