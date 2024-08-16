@@ -45,3 +45,15 @@ spec:
                 name: alkemio-secrets
             - configMapRef:
                 name: alkemio-config
+          volumeMounts:
+          - name: dshm
+            mountPath: /dev/shm
+          - name: virtual-contributor-engine-guidance-persistent-storage
+            mountPath: /app/data
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      - name: virtual-contributor-engine-guidance-persistent-storage
+        persistentVolumeClaim:
+            claimName: virtual-contributor-engine-guidance-pv-claim
