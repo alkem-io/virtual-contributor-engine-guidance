@@ -1,4 +1,4 @@
-name: Build, Migrate & Deploy to Test on Azure
+name: Build, Migrate & Deploy to Test on Hetzner
 
 on:
   workflow_dispatch:
@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout GitHub Action"
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v4.1.7
 
       - name: "Login into ACR"
-        uses: azure/docker-login@v1.0.1
+        uses: azure/docker-login@v2
         with:
           login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
@@ -26,31 +26,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout GitHub Action"
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v4.1.7
 
-      - name: "Login via Azure CLI"
-        uses: azure/login@v1.4.7
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@v4.0.0
         with:
-          creds: ${{ secrets.AZURE_CRED_K8S_NEW }}
+          version: "v1.27.6" # Ensure this matches the version used in your cluster
 
-      - uses: Azure/aks-set-context@v3.2
-        with:
-          cluster-name: k8s-test
-          resource-group: res-grp-k8s-test
+      - name: Set up Kubeconfig for Hetzner k3s
+        run: |
+          mkdir -p $HOME/.kube  # Ensure the .kube directory exists
+          echo "${{ secrets.KUBECONFIG_SECRET_HETZNER_TEST }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
 
-      - uses: Azure/k8s-create-secret@v4.0
-        with:
-          container-registry-url: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
-          container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-          secret-name: alkemio-virtual-contributor-engine-guidance-secret
+      - name: Create Image Pull Secret
+        run: |
+          kubectl create secret docker-registry alkemio-virtual-contributor-engine-guidance-secret \
+            --docker-server=${{ secrets.REGISTRY_LOGIN_SERVER }} \
+            --docker-username=${{ secrets.REGISTRY_USERNAME }} \
+            --docker-password=${{ secrets.REGISTRY_PASSWORD }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - uses: azure/setup-kubectl@v3.2
-        with:
-          version: "v1.22.0" # default is latest stable, fixing it to a compatible version
-        id: install
-
-      - uses: Azure/k8s-deploy@v4.10
+      - uses: azure/k8s-deploy@v5.0.0
         with:
           manifests: |
             manifests/25-virtual-contributor-engine-guidance-deployment-dev.yaml
