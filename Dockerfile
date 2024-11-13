@@ -43,4 +43,4 @@ COPY --from=builder /root/.cache/pypoetry/virtualenvs /root/.cache/pypoetry/virt
 ENV PATH="/usr/local/hugo:/usr/local/go/bin:${PATH}"
 
 # Run virtual_contributor_engine_guidance.py when the container launches
-CMD ["poetry", "run", "python", "virtual_contributor_engine_guidance.py"]
+CMD ["poetry", "run", "python", "main.py"]
