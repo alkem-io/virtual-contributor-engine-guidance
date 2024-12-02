@@ -1,7 +1,5 @@
 import ai_adapter
 import asyncio
-import ai_adapter
-import asyncio
 from alkemio_virtual_contributor_engine.alkemio_vc_engine import (
     AlkemioVirtualContributorEngine,
 )

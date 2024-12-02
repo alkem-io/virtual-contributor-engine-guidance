@@ -2,7 +2,7 @@ import subprocess
 import re
 import os
 from bs4 import BeautifulSoup
-from gitdb.db.pack import glob
+import glob
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
@@ -122,7 +122,7 @@ async def ensure_embedded(path: str, url: str):
             for tag in tags:
                 matches = soup.find_all(tag)
                 for match in matches:
-                    splitted += match.get_text()
+                    splitted.append(match.get_text())
             document.page_content = "".join(splitted)
             # remove the local directory from the source object
             document.metadata["source"] = document.metadata["source"].replace(path, url)
@@ -144,7 +144,7 @@ async def ensure_embedded(path: str, url: str):
 
     logger.info(f"{len(documents)} files added for embedidng")
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=env.chunk_size, chunk_overlap=env.chunk_size / 5
+        chunk_size=env.chunk_size, chunk_overlap=env.chunk_size // 5
     )
     splitted = text_splitter.split_documents(documents)
     logger.info(f"Documents splitted into {len(splitted)} chunks.")

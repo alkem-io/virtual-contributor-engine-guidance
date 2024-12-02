@@ -15,7 +15,7 @@ context:
 +++
 """
 
-condense_prompt = """"
+condense_prompt = """
 Create a single sentence standalone query based on the human input, using the following step-by-step instructions:
 
 1. If the human input is expressing a sentiment, delete and ignore the chat history delimited by triple pluses. \
