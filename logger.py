@@ -2,22 +2,22 @@ import logging
 import sys
 import io
 import os
-from config import local_path, LOG_LEVEL
+from config import env
 
 
 def setup_logger(name):
     logger = logging.getLogger(name)
-    assert LOG_LEVEL in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    logger.setLevel(getattr(logging, LOG_LEVEL))  # Set logger level
+    assert env.log_level in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    logger.setLevel(getattr(logging, env.log_level))  # Set logger level
 
     c_handler = logging.StreamHandler(
         io.TextIOWrapper(sys.stdout.buffer, line_buffering=True)
     )
     f_handler = logging.FileHandler(
-        os.path.join(os.path.expanduser(local_path), "app.log")
+        os.path.join(os.path.expanduser(env.local_path), "app.log")
     )
 
-    c_handler.setLevel(level=getattr(logging, LOG_LEVEL))
+    c_handler.setLevel(level=getattr(logging, env.log_level))
     f_handler.setLevel(logging.WARNING)
 
     c_format = logging.Formatter(
@@ -35,6 +35,6 @@ def setup_logger(name):
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
 
-    logger.info(f"log level {os.path.basename(__file__)}: {LOG_LEVEL}")
+    logger.info(f"log level {os.path.basename(__file__)}: {env.log_level}")
 
     return logger
