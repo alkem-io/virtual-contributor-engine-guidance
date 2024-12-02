@@ -201,8 +201,8 @@ asyncio = "3.4.3"
 [package.source]
 type = "git"
 url = "git@github.com:alkem-io/alkemio-virtual-contributor-engine.git"
-reference = "initial-version"
-resolved_reference = "c90d600be1583287f2351efc0b26ebcd137c8fce"
+reference = "v0.0.1"
+resolved_reference = "1946c3cab57df6475271bdb1747c238318de2c8c"
 
 [[package]]
 name = "annotated-types"
@@ -2442,4 +2442,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "25c08c452daba6c75a1111ab19cd3ab58e22fecde22de3c75fd412ddea9f00eb"
+content-hash = "84672969d904f353af0e6bab403be5a87d3313125c28a2bc2e12183632ec1538"

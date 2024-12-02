@@ -24,7 +24,7 @@ langchain-openai = "^0.2.9"
 gitpython = "^3.1.43"
 langchain-mistralai = "^0.2.1"
 azure-ai-inference = "^1.0.0b6"
-alkemio-virtual-contributor-engine = {git = "git@github.com:alkem-io/alkemio-virtual-contributor-engine.git", rev = "initial-version"}
+alkemio-virtual-contributor-engine = {git = "git@github.com:alkem-io/alkemio-virtual-contributor-engine.git", rev = "v0.0.1"}
 
 
 [tool.poetry.group.dev.dependencies]
