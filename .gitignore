@@ -7,3 +7,6 @@ azure.env
 local.env
 docker-compose-local.yaml
 .DS_Store
+*.log
+repos
+repos/*
