@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "virtual-contributor-engine-guidance"
-version = "0.8.0"
+version = "0.8.1"
 description = "Alkemio Generative AI Guidance Engine"
 authors = ["Alkemio BV <info@alkem.io>"]
 license = "EUPL-1.2"
@@ -24,7 +24,7 @@ langchain-openai = "^0.2.9"
 gitpython = "^3.1.43"
 langchain-mistralai = "^0.2.1"
 azure-ai-inference = "^1.0.0b6"
-alkemio-virtual-contributor-engine = {git = "git@github.com:alkem-io/alkemio-virtual-contributor-engine.git", rev = "v0.0.1"}
+alkemio-virtual-contributor-engine = {git = "https://git@github.com/alkem-io/virtual-contributor-engine.git", rev = "v0.0.1"}
 
 
 [tool.poetry.group.dev.dependencies]
