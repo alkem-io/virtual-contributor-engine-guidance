@@ -1,6 +1,6 @@
 # Use an official Python runtime as a parent image
 ARG PYTHON_VERSION=3.11
-FROM python:${PYTHON_VERSION}-slim-bullseye as builder
+FROM python:${PYTHON_VERSION}-slim-bullseye AS builder
 
 # Set the working directory in the container to /app
 WORKDIR /app
@@ -10,7 +10,7 @@ ARG HUGO_VERSION=0.121.2
 ARG TARGETARCH
 
 # install git, go and hugo
-RUN  apt update && apt upgrade -y && apt install -y git wget
+RUN apt update && apt upgrade -y && apt install -y git wget
 RUN wget https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz && tar -C /usr/local -xzf go${GO_VERSION}.linux-${TARGETARCH}.tar.gz 
 RUN export PATH=$PATH:/usr/local/go/bin:/usr/local && go version
 RUN wget https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-${TARGETARCH}.tar.gz && tar -C /usr/local -xzf hugo_extended_${HUGO_VERSION}_linux-${TARGETARCH}.tar.gz && ls -al /usr/local
