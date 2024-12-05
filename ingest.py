@@ -48,7 +48,7 @@ async def ensure_cloned(repo_name: str, path: str):
         logger.info(f"Repository {path} already cloned.")
         repo = Repo.init(path)
     else:
-        logger.info(f"Closning repository: {path}")
+        logger.info(f"Cloning repository: {path}")
         repo = Repo.clone_from(repo_name, path, branch="main")
 
     repo.heads.main.checkout()
