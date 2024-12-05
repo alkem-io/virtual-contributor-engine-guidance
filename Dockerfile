@@ -9,15 +9,25 @@ ARG GO_VERSION=1.21.6
 ARG HUGO_VERSION=0.121.2
 ARG TARGETARCH
 
+RUN apt-get update -y \
+  && apt-get upgrade -y \
+  && apt-get install -y git wget \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
 # install git, go and hugo
 RUN apt-get upgrade -y 
 RUN apt-get update -y 
 RUN apt-get install -y git wget
 RUN wget https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz && tar -C /usr/local -xzf go${GO_VERSION}.linux-${TARGETARCH}.tar.gz 
 
-RUN export PATH=$PATH:/usr/local/go/bin:/usr/local && go version
+ENV PATH="/usr/local/go/bin:/usr/local:${PATH}"
+RUN go version
 
-RUN wget https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-${TARGETARCH}.tar.gz && tar -C /bin -xzf hugo_extended_${HUGO_VERSION}_linux-${TARGETARCH}.tar.gz && ls -al /usr/local
+RUN wget https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-${TARGETARCH}.tar.gz \
+  && tar -C /bin -xzf hugo_extended_${HUGO_VERSION}_linux-${TARGETARCH}.tar.gz \
+  && rm hugo_extended_${HUGO_VERSION}_linux-${TARGETARCH}.tar.gz
+
 RUN hugo version
 
 # Install Poetry
