@@ -1,15 +1,18 @@
+import json
 from azure.ai.inference.models import SystemMessage, UserMessage
 from alkemio_virtual_contributor_engine.events.response import Response
 from alkemio_virtual_contributor_engine.events.input import Input
+from create_context import create_context
 from logger import setup_logger
-from logger import setup_logger
-from models import get_retriever, invoke_model
+from models import invoke_model
 from alkemio_virtual_contributor_engine.utils import (
-    combine_documents,
-    get_language_by_code,
     history_as_text,
 )
-from prompts import chat_system_prompt, condense_prompt
+from prompts import (
+    condense_prompt,
+    bok_system_prompt,
+    response_system_prompt,
+)
 from config import env
 
 logger = setup_logger(__name__)
@@ -60,32 +63,40 @@ async def query_chain(input: Input) -> Response:
     else:
         logger.info("No history to handle, initial interaction")
 
-    documents = get_retriever().invoke(message)
-    logger.info("Context retrieved.")
-    logger.debug(f"Context is {documents}")
-    context = combine_documents(documents)
+    documents, context = create_context(message)
 
     messages = [
+        SystemMessage(content=bok_system_prompt.format(knowledge=context)),
         SystemMessage(
-            content=chat_system_prompt.format(
-                context=context, language=get_language_by_code(input.language)
+            content=response_system_prompt.format(
+                context=context  # , language=get_language_by_code(input.language)
             )
         ),
         UserMessage(content=message),
     ]
 
     logger.info("Invoking LLM.")
-    result = invoke_model(messages)
+    response = json.loads(invoke_model(messages))
     logger.info("LLM invocation completed.")
-    logger.info(f"LLM message is: {result}")
+    logger.info(f"LLM message is: {response}")
+
+    sources = []
+    for index, metadata in enumerate(documents["metadatas"][0]):
+        index = str(index)
+        if (
+            {"uri": metadata["source"]} not in sources
+            and index in response["source_scores"]
+            and response["source_scores"][index] > 0
+        ):
+            sources.append({"uri": metadata["source"]})
 
     return Response(
         {
-            "result": result,
-            "original_result": result,
+            "result": response["result"],
+            "original_result": response["result"],
             "human_language": input.language,
             "result_language": input.language,
             "knowledge_language": "en",
-            "sources": [{"uri": document.metadata["source"]} for document in documents],
+            "sources": sources,
         }
     )

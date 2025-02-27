@@ -11,6 +11,8 @@ load_dotenv()
 class Env:
     model_name: str
     embeddings_model_name: str
+    openai_api_key: str
+    openai_endpoint: str
     openai_api_version: str
     site_url: str
     welcome_site_url: str
@@ -41,6 +43,8 @@ class Env:
 
         self.model_name = os.getenv("LLM_DEPLOYMENT_NAME", "")
         self.embeddings_model_name = os.getenv("EMBEDDINGS_DEPLOYMENT_NAME", "")
+        self.openai_api_key = os.getenv("AZURE_OPENAI_API_KEY", "")
+        self.openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
         self.openai_api_version = os.getenv("OPENAI_API_VERSION", "")
 
         self.site_url = os.getenv("AI_SOURCE_WEBSITE", "")
