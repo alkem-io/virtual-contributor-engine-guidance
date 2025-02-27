@@ -40,6 +40,8 @@ spec:
                 secretKeyRef:
                   name: alkemio-rabbitmq-cluster-default-user
                   key: password
+            - name: RABBITMQ_QUEUE
+              value: virtual-contributor-engine-guidance
           envFrom:
             - secretRef:
                 name: alkemio-secrets

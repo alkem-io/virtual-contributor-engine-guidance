@@ -1,8 +1,10 @@
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from pydantic import SecretStr
 from config import env
-from langchain_mistralai.chat_models import ChatMistralAI
+from chromadb.utils.embedding_functions.openai_embedding_function import (
+    OpenAIEmbeddingFunction,
+)
+
 
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
@@ -28,6 +30,14 @@ def invoke_model(messages, temperature=None):
 
 embeddings = AzureOpenAIEmbeddings(
     azure_deployment=env.embeddings_model_name, chunk_size=1
+)
+
+embed_func = OpenAIEmbeddingFunction(
+    api_key=env.openai_api_key,
+    api_base=env.openai_endpoint,
+    api_type="azure",
+    api_version=env.openai_api_version,
+    model_name=env.embeddings_model_name,
 )
 
 
