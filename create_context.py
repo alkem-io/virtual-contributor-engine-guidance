@@ -49,11 +49,9 @@ def get_documents(message: str):
                 result["documents"][0] += tmp_result["documents"][0]
                 result["metadatas"][0] += tmp_result["metadatas"][0]
         except Exception as e:
-            print("sl;on")
             logger.error(f"Failed to retrieve documents from collection: {collection}")
             logger.exception(e)
 
-    print(result)
     return result
 
 
