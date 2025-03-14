@@ -26,27 +26,34 @@ def get_documents(message: str):
     result = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
 
     for collection in collections:
-        collection = chromadb_client.get_collection(
-            collection, embedding_function=embed_func
-        )
-        tmp_result = collection.query(
-            query_texts=[message],
-            include=[
-                IncludeEnum.documents,
-                IncludeEnum.metadatas,
-                IncludeEnum.distances,
-            ],
-            n_results=3,
-        )
-        if (
-            tmp_result
-            and tmp_result["documents"]
-            and tmp_result["distances"]
-            and tmp_result["metadatas"]
-        ):
-            result["distances"][0] += tmp_result["distances"][0]
-            result["documents"][0] += tmp_result["documents"][0]
-            result["metadatas"][0] += tmp_result["metadatas"][0]
+        try:
+            collection = chromadb_client.get_collection(
+                collection, embedding_function=embed_func
+            )
+            tmp_result = collection.query(
+                query_texts=[message],
+                include=[
+                    IncludeEnum.documents,
+                    IncludeEnum.metadatas,
+                    IncludeEnum.distances,
+                ],
+                n_results=3,
+            )
+            if (
+                tmp_result
+                and tmp_result["documents"]
+                and tmp_result["distances"]
+                and tmp_result["metadatas"]
+            ):
+                result["distances"][0] += tmp_result["distances"][0]
+                result["documents"][0] += tmp_result["documents"][0]
+                result["metadatas"][0] += tmp_result["metadatas"][0]
+        except Exception as e:
+            print("sl;on")
+            logger.error(f"Failed to retrieve documents from collection: {collection}")
+            logger.exception(e)
+
+    print(result)
     return result
 
 
