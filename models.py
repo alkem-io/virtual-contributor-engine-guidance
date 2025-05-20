@@ -8,6 +8,9 @@ from chromadb.utils.embedding_functions.openai_embedding_function import (
 
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
+from logger import setup_logger
+
+logger = setup_logger(__name__)
 
 llm = ChatCompletionsClient(
     endpoint=env.mistral_endpoint,
@@ -18,6 +21,7 @@ llm = ChatCompletionsClient(
 def invoke_model(messages, temperature=None):
     if temperature is None:
         temperature = env.model_temperature
+
     result = llm.complete(
         messages=messages,
         temperature=temperature,
@@ -25,6 +29,9 @@ def invoke_model(messages, temperature=None):
         stream=False,
     )
     message = str(result["choices"][0]["message"]["content"])
+
+    logger.debug(message)
+
     return message
 
 
