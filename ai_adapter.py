@@ -67,7 +67,7 @@ async def query_chain(input: Input) -> Response:
 
     messages = [
         SystemMessage(content=bok_system_prompt.format(knowledge=context)),
-        SystemMessage(content=response_system_prompt.format(context=context)),
+        SystemMessage(content=response_system_prompt),
         UserMessage(content=message),
     ]
 
