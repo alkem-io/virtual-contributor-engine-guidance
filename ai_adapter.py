@@ -29,14 +29,12 @@ async def invoke(input: Input) -> Response:
         result = f"{input.display_name} - the Alkemio's VirtualContributor is currently unavailable."
 
         return Response(
-            {
-                "result": result,
-                "original_result": result,
-                "human_language": input.language,
-                "result_language": input.language,
-                "knowledge_language": "en",
-                "sources": [],
-            }
+            result=result,
+            original_result=result,
+            human_language=input.language,
+            result_language=input.language,
+            knowledge_language="en",
+            sources=[],
         )
 
 
@@ -45,7 +43,7 @@ async def query_chain(input: Input) -> Response:
     message = input.message
     logger.debug(f"User message is: {message}")
 
-    history = input.history[(env.history_length + 1) * -1 : -1]
+    history = input.history[(env.history_length + 1) * -1: -1]
     if len(history) > 0:
         logger.info(f"We have history. Let's rephrase. Length is: {len(history)}.")
         messages = [
@@ -80,19 +78,15 @@ async def query_chain(input: Input) -> Response:
     for index, metadata in enumerate(documents["metadatas"][0]):
         index = str(index)
         if (
-            {"uri": metadata["source"]} not in sources
-            and index in response["source_scores"]
-            and response["source_scores"][index] > 0
+            {"uri": metadata["source"]} not in sources and index in response["source_scores"] and response["source_scores"][index] > 0
         ):
             sources.append({"uri": metadata["source"]})
 
     return Response(
-        {
-            "result": response["result"],
-            "original_result": response["result"],
-            "human_language": input.language,
-            "result_language": input.language,
-            "knowledge_language": "en",
-            "sources": sources,
-        }
+        result=response["result"],
+        original_result=response["result"],
+        human_language=input.language,
+        result_language=input.language,
+        knowledge_language="en",
+        sources=sources,
     )

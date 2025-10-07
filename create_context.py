@@ -1,4 +1,3 @@
-from chromadb.api.types import IncludeEnum
 from models import embed_func
 from logger import setup_logger
 
@@ -28,22 +27,15 @@ def get_documents(message: str):
     for collection in collections:
         try:
             collection = chromadb_client.get_collection(
-                collection, embedding_function=embed_func
+                collection
             )
             tmp_result = collection.query(
-                query_texts=[message],
-                include=[
-                    IncludeEnum.documents,
-                    IncludeEnum.metadatas,
-                    IncludeEnum.distances,
-                ],
+                query_embeddings=list(embed_func(message)),
+                include=['documents', 'metadatas', 'distances'],
                 n_results=3,
             )
             if (
-                tmp_result
-                and tmp_result["documents"]
-                and tmp_result["distances"]
-                and tmp_result["metadatas"]
+                tmp_result and tmp_result["documents"] and tmp_result["distances"] and tmp_result["metadatas"]
             ):
                 result["distances"][0] += tmp_result["distances"][0]
                 result["documents"][0] += tmp_result["documents"][0]

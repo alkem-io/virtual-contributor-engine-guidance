@@ -1,4 +1,4 @@
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from config import env
 from chromadb.utils.embedding_functions.openai_embedding_function import (
@@ -44,7 +44,7 @@ embed_func = OpenAIEmbeddingFunction(
     api_base=env.openai_endpoint,
     api_type="azure",
     api_version=env.openai_api_version,
-    model_name=env.embeddings_model_name,
+    deployment_id=env.embeddings_model_name,
 )
 
 
