@@ -1,5 +1,5 @@
 bok_system_prompt = """
-Below delimited by '+++' you are pvorovided with your knowledge base structured as a list of documents which should contain the answer to the \
+Below delimited by '+++' you are provided with your knowledge base structured as a list of documents which should contain the answer to the \
 human questions. If the answer to the human question can not be found in the documents indicate it.
 Never answer questions which are not related to the knowledge base.
 Each document is prefixed with an identifier: [source:0], [source:1], [source:2] and so on. While answering the human question keep track of \
