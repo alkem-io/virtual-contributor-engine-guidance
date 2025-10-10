@@ -1,19 +1,21 @@
 import json
-from azure.ai.inference.models import SystemMessage, UserMessage
-from alkemio_virtual_contributor_engine.events.response import Response
-from alkemio_virtual_contributor_engine.events.input import Input
-from create_context import create_context
-from logger import setup_logger
-from models import invoke_model
-from alkemio_virtual_contributor_engine.utils import (
+from config import env
+from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
+from alkemio_virtual_contributor_engine import (
+    Response,
+    Input,
     history_as_text,
+    setup_logger,
+    mistral_medium as llm,
 )
+from create_context import create_context
+
 from prompts import (
     condense_prompt,
     bok_system_prompt,
     response_system_prompt,
 )
-from config import env
 
 logger = setup_logger(__name__)
 
@@ -26,7 +28,10 @@ async def invoke(input: Input) -> Response:
         return await query_chain(input)
     except Exception as inst:
         logger.exception(inst)
-        result = f"{input.display_name} - the Alkemio's VirtualContributor is currently unavailable."
+        result = (
+            f"{input.display_name} - the Alkemio's VirtualContributor is currently "
+            "unavailable."
+        )
 
         return Response(
             result=result,
@@ -46,31 +51,35 @@ async def query_chain(input: Input) -> Response:
     history = input.history[(env.history_length + 1) * -1: -1]
     if len(history) > 0:
         logger.info(f"We have history. Let's rephrase. Length is: {len(history)}.")
-        messages = [
+        prompt = ChatPromptTemplate.from_messages([
             SystemMessage(
                 content=condense_prompt.format(
                     chat_history=history_as_text(history), message=message
                 )
             )
-        ]
-        result = invoke_model(messages, 0)
+        ])
+        chain = prompt | llm
+        result = chain.invoke({})
         logger.info(
             f"Original message is: '{message}'; Rephrased message is: '{result}'"
         )
-        message = result
+        message = result.content
     else:
         logger.info("No history to handle, initial interaction")
 
     documents, context = create_context(message)
 
-    messages = [
+    prompt = ChatPromptTemplate.from_messages([
         SystemMessage(content=bok_system_prompt.format(knowledge=context)),
         SystemMessage(content=response_system_prompt),
-        UserMessage(content=message),
-    ]
+        HumanMessage(content=message),
+    ])
 
     logger.info("Invoking LLM.")
-    response = json.loads(invoke_model(messages))
+    chain = prompt | llm
+    result = chain.invoke({})
+
+    response = json.loads(result.content)
     logger.info("LLM invocation completed.")
     logger.info(f"LLM message is: {response}")
 
@@ -78,7 +87,9 @@ async def query_chain(input: Input) -> Response:
     for index, metadata in enumerate(documents["metadatas"][0]):
         index = str(index)
         if (
-            {"uri": metadata["source"]} not in sources and index in response["source_scores"] and response["source_scores"][index] > 0
+            {"uri": metadata["source"]} not in sources
+            and index in response["source_scores"]
+            and response["source_scores"][index] > 0
         ):
             sources.append({"uri": metadata["source"]})
 

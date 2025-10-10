@@ -1,13 +1,12 @@
 import asyncio
-
 import ai_adapter
 from alkemio_virtual_contributor_engine.alkemio_vc_engine import (
+    Input,
     AlkemioVirtualContributorEngine,
+    Response,
+    setup_logger
 )
-from alkemio_virtual_contributor_engine.events import Input
-from alkemio_virtual_contributor_engine.events.response import Response
 
-from logger import setup_logger
 
 logger = setup_logger(__name__)
 
