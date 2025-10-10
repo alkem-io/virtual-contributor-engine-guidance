@@ -1,7 +1,4 @@
-from models import embed_func
-from logger import setup_logger
-
-from alkemio_virtual_contributor_engine.chromadb_client import chromadb_client
+from alkemio_virtual_contributor_engine import chromadb_client, openai_embeddings, setup_logger
 
 
 logger = setup_logger(__name__)
@@ -29,13 +26,22 @@ def get_documents(message: str):
             collection = chromadb_client.get_collection(
                 collection
             )
+            embeddings = openai_embeddings.embed_documents([message])
+
             tmp_result = collection.query(
-                query_embeddings=list(embed_func(message)),
-                include=['documents', 'metadatas', 'distances'],
+                query_embeddings=list(embeddings),
+                include=[
+                    'documents',
+                    'metadatas',
+                    'distances',
+                ],
                 n_results=3,
             )
             if (
-                tmp_result and tmp_result["documents"] and tmp_result["distances"] and tmp_result["metadatas"]
+                tmp_result
+                and tmp_result["documents"]
+                and tmp_result["distances"]
+                and tmp_result["metadatas"]
             ):
                 result["distances"][0] += tmp_result["distances"][0]
                 result["documents"][0] += tmp_result["documents"][0]

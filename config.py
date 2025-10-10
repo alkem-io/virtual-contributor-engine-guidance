@@ -50,8 +50,14 @@ class Env:
         self.site_url = os.getenv("AI_SOURCE_WEBSITE", "")
         self.welcome_site_url = os.getenv("AI_SOURCE_WEBSITE2", "")
 
-        self.site_repo = f"https://{os.getenv('AI_GITHUB_PAT', '')}@{os.getenv('AI_WEBSITE_REPO', '')}"
-        self.welcome_site_repo = f"https://{os.getenv('AI_GITHUB_PAT', '')}@{os.getenv('AI_WEBSITE_REPO2', '')}"
+        self.site_repo = (
+            f"https://{os.getenv('AI_GITHUB_PAT', '')}@"
+            f"{os.getenv('AI_WEBSITE_REPO', '')}"
+        )
+        self.welcome_site_repo = (
+            f"https://{os.getenv('AI_GITHUB_PAT', '')}@"
+            f"{os.getenv('AI_WEBSITE_REPO2', '')}"
+        )
 
         self.github_user = os.getenv("AI_GITHUB_USER", "")
         self.github_pat = os.getenv("AI_GITHUB_PAT", "")
