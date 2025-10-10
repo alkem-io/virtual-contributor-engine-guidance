@@ -21,9 +21,9 @@ document is.
 Refer to the documents as 'knowledge base' and as a whole.
 If asked which specific source you used, answer by saying you used your
 knowledge base and NEVER quote a source identifier.
-++
++++
 {knowledge}
-++
++++
 """
 )
 
@@ -71,7 +71,7 @@ Create a single sentence standalone query based on the human input, using the
 following step-by-step instructions:
 
 1. If the human input is expressing a sentiment, delete and ignore the chat
-history delimited by triple pluses. Then, return the human input containing the
+history delimited by triple pluses (+++). Then, return the human input containing the
 sentiment as the standalone query. Do NOT respond to the human input; simply
 repeat it.
 2. Otherwise, combine the chat history (triple pluses) and human input into a
@@ -79,10 +79,10 @@ single standalone query that does justice to the human input.
 3. Only return the standalone query; do not respond to the user query or return
 any other information. Never return the chat history.
 
-++
++++
 chat history:
 {chat_history}
-++
++++
 
 Human input: {message}
 ---
