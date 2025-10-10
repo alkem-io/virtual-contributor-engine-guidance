@@ -11,7 +11,6 @@ package-mode = false
 python = "~3.11"
 langchain = "0.3.27"
 langchain-core = "0.3.78"
-langchain-community = "0.3.30"
 python-dotenv = "1.1.1"
 faiss-cpu = "1.12.0"
 openai = "2.2.0"
@@ -21,12 +20,9 @@ async-timeout = "5.0.1"
 aio-pika = "9.5.7"
 aiormq = "6.9.0"
 tiktoken = "0.12.0"
-langchain-openai = "0.3.35"
-langchain-mistralai = "0.2.12"
 gitpython = "3.1.45"
-azure-ai-inference = "1.0.0b9"
 bcrypt = "^5.0.0"
-alkemio-virtual-contributor-engine = {git = "https://git@github.com/alkem-io/virtual-contributor-engine.git", rev = "v0.2.0"}
+alkemio-virtual-contributor-engine = {path = "../alkemio-virtual-contributor-engine"}
 
 
 [tool.poetry.group.dev.dependencies]
