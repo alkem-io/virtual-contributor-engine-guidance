@@ -6,8 +6,12 @@ logger = setup_logger(__name__)
 
 def combine_documents(docs, document_separator="\n\n"):
     chunks_array = []
-    for index, document in enumerate(docs["documents"][0]):
-        chunks_array.append(f"[source:{index}] {document}")
+    documents = docs.get("documents")
+    if not documents or not documents[0]:
+        return ""
+    for index, document in enumerate(documents[0]):
+        if document:
+            chunks_array.append(f"[source:{index}] {document}")
 
     return document_separator.join(chunks_array)
 
@@ -21,10 +25,10 @@ def get_documents(message: str):
     ]
     result = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
 
-    for collection in collections:
+    for collection_name in collections:
         try:
             collection = chromadb_client.get_collection(
-                collection
+                collection_name
             )
             embeddings = openai_embeddings.embed_documents([message])
 
@@ -39,15 +43,23 @@ def get_documents(message: str):
             )
             if (
                 tmp_result
-                and tmp_result["documents"]
-                and tmp_result["distances"]
-                and tmp_result["metadatas"]
+                and tmp_result.get("documents")
+                and tmp_result.get("distances")
+                and tmp_result.get("metadatas")
             ):
-                result["distances"][0] += tmp_result["distances"][0]
-                result["documents"][0] += tmp_result["documents"][0]
-                result["metadatas"][0] += tmp_result["metadatas"][0]
+                documents = tmp_result["documents"]
+                distances = tmp_result["distances"]
+                metadatas = tmp_result["metadatas"]
+                if documents and documents[0]:
+                    result["documents"][0] += documents[0]
+                if distances and distances[0]:
+                    result["distances"][0] += distances[0]
+                if metadatas and metadatas[0]:
+                    result["metadatas"][0] += metadatas[0]
         except Exception as e:
-            logger.error(f"Failed to retrieve documents from collection: {collection}")
+            logger.error(
+                f"Failed to retrieve documents from collection: {collection_name}"
+            )
             logger.exception(e)
 
     return result
