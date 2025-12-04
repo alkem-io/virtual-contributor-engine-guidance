@@ -1,6 +1,6 @@
 import json
 from config import env
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from alkemio_virtual_contributor_engine import (
     Response,
