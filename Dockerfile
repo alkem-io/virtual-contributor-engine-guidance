@@ -15,22 +15,26 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Create virtual environment using Debian's Python (compatible with distroless)
-RUN python3 -m venv /venv
-ENV PATH="/venv/bin:$PATH"
+# Install Poetry in a separate venv to avoid PEP 668 issues
+RUN python3 -m venv /opt/poetry && \
+    /opt/poetry/bin/pip install --no-cache-dir poetry && \
+    ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry
 
-# Install Poetry in the virtual environment
-RUN pip install --no-cache-dir poetry
-
-# Configure Poetry to install into the existing venv
-ENV POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_NO_INTERACTION=1
+# Configure Poetry to create venv in project
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_VIRTUALENVS_CREATE=true \
+    POETRY_CACHE_DIR=/tmp/poetry_cache
 
 # Copy only dependency files first (better layer caching)
 COPY pyproject.toml poetry.lock* ./
 
 # Install dependencies (without dev dependencies)
-RUN poetry install --only main --no-root --no-ansi
+RUN poetry install --only main --no-root --no-ansi && \
+    rm -rf $POETRY_CACHE_DIR && \
+    # Remove pip, setuptools, wheel and pycache to save space
+    /app/.venv/bin/pip uninstall -y pip setuptools wheel && \
+    find /app/.venv -type d -name "__pycache__" -exec rm -rf {} +
 
 # =============================================================================
 # Stage 2: Runtime stage - Google distroless Python image
@@ -42,24 +46,28 @@ FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
 
 WORKDIR /app
 
-# Copy virtual environment site-packages from builder
-# We copy to dist-packages which is on the default python path in Debian/Distroless
-COPY --from=builder /venv/lib/python3.11/site-packages /usr/lib/python3.11/dist-packages
+# Copy the virtual environment from builder
+# We keep the same path (.venv) to ensure symlinks and paths work correctly
+COPY --from=builder --chown=nonroot:nonroot /app/.venv /app/.venv
 
 # Copy application code
-# We use .dockerignore to exclude unwanted files
 COPY --chown=nonroot:nonroot . /app
 
-# Environment variables for Python optimization
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/usr/lib/python3.11/dist-packages
+# Create a writable log file for the nonroot user
+# The application tries to write to /app/app.log
+RUN touch /app/app.log && chown nonroot:nonroot /app/app.log
 
-# Explicitly define the user (good practice)
+# Set PATH to use the venv's python executable
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app/.venv/lib/python3.11/site-packages:/app"
+
+# Explicitly define the user
 USER nonroot
 
-# Run main.py when the container launches
-ENTRYPOINT ["python3", "main.py"]
+# Run main.py using the venv python
+ENTRYPOINT ["/app/.venv/bin/python", "main.py"]
 
 # =============================================================================
 # Stage 3: Full runtime with Git and Hugo (for ingest capability)
@@ -75,10 +83,8 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         python3 \
-        python3-venv \
         git \
-        ca-certificates \
-        wget && \
+        ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Hugo
@@ -91,14 +97,17 @@ RUN tar -C /usr/local/bin -xzf /tmp/hugo.tar.gz hugo \
 RUN useradd --create-home --uid 1000 --shell /bin/bash appuser
 
 # Copy virtual environment from builder
-COPY --from=builder /venv /venv
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
 # Copy application code
 COPY --chown=appuser:appuser . .
 
+# Create a writable log file for the appuser
+RUN touch /app/app.log && chown appuser:appuser /app/app.log
+
 # Set environment variables
-ENV VIRTUAL_ENV=/venv \
-    PATH="/venv/bin:$PATH" \
+ENV VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
@@ -106,4 +115,4 @@ ENV VIRTUAL_ENV=/venv \
 USER appuser
 
 # Run main.py when the container launches
-CMD ["python3", "main.py"]
+ENTRYPOINT ["/app/.venv/bin/python", "main.py"]
