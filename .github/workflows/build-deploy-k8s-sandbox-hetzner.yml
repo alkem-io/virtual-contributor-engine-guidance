@@ -1,4 +1,4 @@
-name: Build, Migrate & Deploy to Test on Hetzner
+name: Build, Migrate & Deploy to Sandbox on Hetzner
 
 on:
   workflow_dispatch:
