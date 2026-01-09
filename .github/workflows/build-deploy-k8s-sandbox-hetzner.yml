@@ -24,6 +24,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: "Checkout GitHub Action"
         uses: actions/checkout@v4.1.7

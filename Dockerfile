@@ -32,9 +32,24 @@ COPY pyproject.toml poetry.lock* ./
 # Install dependencies (without dev dependencies)
 RUN poetry install --only main --no-root --no-ansi && \
     rm -rf $POETRY_CACHE_DIR && \
-    # Remove pip, setuptools, wheel and pycache to save space
-    /app/.venv/bin/pip uninstall -y pip setuptools wheel && \
-    find /app/.venv -type d -name "__pycache__" -exec rm -rf {} +
+    # Remove pip + wheel (keep setuptools for runtime compatibility)
+    /app/.venv/bin/pip uninstall -y pip wheel && \
+    find /app/.venv -type d -name "__pycache__" -exec rm -rf {} + && \
+    # Trim non-runtime content from installed packages
+    SITE_PACKAGES="$(/app/.venv/bin/python -c 'import site; print(site.getsitepackages()[0])')" && \
+    find "$SITE_PACKAGES" -type d \( \
+        -name "tests" -o -name "test" -o \
+        -name "docs" -o -name "doc" -o \
+        -name "examples" -o -name "example" -o \
+        -name "__pycache__" \
+    \) -prune -exec rm -rf '{}' + && \
+    find "$SITE_PACKAGES" -type f -name "*.pyc" -delete
+
+# Copy application code (kept after dependency install for better caching)
+COPY . /app
+
+# Create files/dirs that the distroless runtime cannot create (no shell)
+RUN touch /app/app.log
 
 # =============================================================================
 # Stage 2: Runtime stage - Google distroless Python image
@@ -44,18 +59,11 @@ RUN poetry install --only main --no-root --no-ansi && \
 # =============================================================================
 FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
 
+# Copy the prebuilt app (code + venv + log file) from the builder.
+# Use UID/GID 1000 to stay compatible with typical host-mounted volumes.
+COPY --from=builder --chown=1000:1000 /app /app
+
 WORKDIR /app
-
-# Copy the virtual environment from builder
-# We keep the same path (.venv) to ensure symlinks and paths work correctly
-COPY --from=builder --chown=nonroot:nonroot /app/.venv /app/.venv
-
-# Copy application code
-COPY --chown=nonroot:nonroot . /app
-
-# Create a writable log file for the nonroot user
-# The application tries to write to /app/app.log
-RUN touch /app/app.log && chown nonroot:nonroot /app/app.log
 
 # Set PATH to use the venv's python executable
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -64,7 +72,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app/.venv/lib/python3.11/site-packages:/app"
 
 # Explicitly define the user
-USER nonroot
+USER 1000:1000
 
 # Run main.py using the venv python
 ENTRYPOINT ["/app/.venv/bin/python", "main.py"]
