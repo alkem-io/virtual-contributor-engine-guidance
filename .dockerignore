@@ -1,0 +1,17 @@
+.git
+.gitignore
+.vscode
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+manifests
+.github
+.flake8
+.azure-template.env
+docker-compose.yaml
+Dockerfile
+README.md
+LICENSE
