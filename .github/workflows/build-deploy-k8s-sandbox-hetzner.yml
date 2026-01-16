@@ -1,4 +1,4 @@
-name: Build, Migrate & Deploy to Test on Hetzner
+name: Build, Migrate & Deploy to Sandbox on Hetzner
 
 on:
   workflow_dispatch:
@@ -24,6 +24,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    needs: build
     steps:
       - name: "Checkout GitHub Action"
         uses: actions/checkout@v4.1.7
