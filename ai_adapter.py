@@ -81,6 +81,10 @@ async def invoke(input: Input) -> Response:
             f"Invoking graph "
             f"history_messages={len(input.history)}"
         )
+        logger.debug(
+            f"Full conversation history: "
+            f"{history_as_dict(input.history)}"
+        )
 
         graph = prompt_graph.compile(
             llm=mistral_small,
@@ -103,6 +107,9 @@ async def invoke(input: Input) -> Response:
         ):
             for node_name, node_output in step.items():
                 logger.info(f"Step '{node_name}' completed")
+                logger.debug(
+                    f"Step '{node_name}' output: {node_output}"
+                )
                 result.update(node_output)
         duration = time.time() - start_time
         logger.info(
@@ -154,6 +161,8 @@ async def invoke(input: Input) -> Response:
                 {doc["source"]: doc for doc in sources
                  if "source" in doc}.values()
             )
+
+        logger.debug(f"Full result: {json_result}")
 
         return Response(**json_result)
 
