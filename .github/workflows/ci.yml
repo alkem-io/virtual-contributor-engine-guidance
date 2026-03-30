@@ -41,6 +41,14 @@ jobs:
         run: poetry install --no-root --no-ansi
 
       - name: Run tests with coverage
+        env:
+          RABBITMQ_HOST: localhost
+          RABBITMQ_USER: test
+          RABBITMQ_PASSWORD: test
+          RABBITMQ_QUEUE: test-queue
+          RABBITMQ_RESULT_QUEUE: test-result-queue
+          RABBITMQ_EVENT_BUS_EXCHANGE: test-exchange
+          RABBITMQ_RESULT_ROUTING_KEY: test-routing-key
         run: >
           poetry run pytest
           --cov=ai_adapter --cov=main
