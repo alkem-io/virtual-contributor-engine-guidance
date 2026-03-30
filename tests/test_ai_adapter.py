@@ -149,6 +149,29 @@ class TestRetrieve:
 
         assert result["knowledge_docs"]["documents"][0] == []
 
+    @patch("ai_adapter.combine_query_results")
+    @patch("ai_adapter.query_documents")
+    def test_empty_messages_no_rephrased(
+        self, mock_qd, mock_combine
+    ):
+        """When both rephrased_question and messages are empty."""
+        mock_qd.return_value = {
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
+        }
+        mock_combine.return_value = ""
+
+        state = MagicMock()
+        state.rephrased_question = None
+        state.messages = []
+
+        from ai_adapter import retrieve
+        retrieve(state)
+
+        first_call_query = mock_qd.call_args_list[0][0][0]
+        assert first_call_query == ""
+
 
 # --- invoke() tests ---
 
@@ -256,9 +279,7 @@ class TestInvoke:
         response = await invoke(mock_input)
 
         assert response.result == "Answer"
-        assert "sources" not in response.__dict__ or \
-            not hasattr(response, 'sources') or \
-            len(getattr(response, 'sources', [])) == 0
+        assert response.sources == []
 
     @pytest.mark.asyncio
     @patch("ai_adapter.history_as_conversation", return_value="conv")
@@ -307,6 +328,7 @@ class TestInvoke:
             for s in sources
         ]
         # Deduplicated: only one entry for same URI
+        assert len(sources) == 1
         assert len(set(uris)) == len(uris)
 
     @pytest.mark.asyncio
@@ -349,7 +371,6 @@ class TestInvoke:
 
         assert len(response.sources) == 1
         src = response.sources[0]
-        # title should use default (formatted with "unknown" type)
         title = getattr(src, "title", "") or ""
         score = getattr(src, "score", None)
         assert "[Unknown]" in title
@@ -382,3 +403,36 @@ class TestInvoke:
         response = await invoke(mock_input)
 
         assert response.result == "Answer"
+        assert response.sources == []
+
+    @pytest.mark.asyncio
+    @patch("ai_adapter.history_as_conversation", return_value="conv")
+    @patch("ai_adapter.history_as_dict", return_value=[
+        {"content": "test", "role": "human"}
+    ])
+    @patch("ai_adapter.PromptGraph")
+    async def test_result_language_uses_answer_language(
+        self, MockPG, mock_hd, mock_hc, mock_input
+    ):
+        """Verify result_language maps to answer_language, not knowledge_language."""
+        stream_result = [
+            {"generate": {
+                "knowledge_answer": "Respuesta",
+                "final_answer": "Respuesta",
+                "source_scores": {},
+                "human_language": "es",
+                "answer_language": "es",
+                "knowledge_language": "en",
+            }},
+        ]
+        mock_compiled = MagicMock()
+        mock_compiled.stream.return_value = iter(stream_result)
+        mock_pg_instance = MagicMock()
+        mock_pg_instance.compile.return_value = mock_compiled
+        MockPG.from_dict.return_value = mock_pg_instance
+
+        from ai_adapter import invoke
+        response = await invoke(mock_input)
+
+        assert response.result_language == "es"
+        assert response.knowledge_language == "en"

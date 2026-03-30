@@ -23,11 +23,15 @@ COLLECTIONS = [
 
 def retrieve(state):
     """Retrieve knowledge documents from 3 hardcoded Alkemio website collections."""
-    last_msg = state.messages[0]
-    last_message = state.rephrased_question or (
-        last_msg["content"] if isinstance(last_msg, dict)
-        else last_msg.content
-    )
+    last_message = state.rephrased_question
+    if not last_message and state.messages:
+        last_msg = state.messages[0]
+        last_message = (
+            last_msg["content"] if isinstance(last_msg, dict)
+            else last_msg.content
+        )
+    if not last_message:
+        last_message = ""
 
     result = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
 
@@ -77,10 +81,6 @@ async def invoke(input: Input) -> Response:
             f"Invoking graph "
             f"history_messages={len(input.history)}"
         )
-        logger.debug(
-            f"Full conversation history: "
-            f"{history_as_dict(input.history)}"
-        )
 
         graph = prompt_graph.compile(
             llm=mistral_small,
@@ -103,9 +103,6 @@ async def invoke(input: Input) -> Response:
         ):
             for node_name, node_output in step.items():
                 logger.info(f"Step '{node_name}' completed")
-                logger.debug(
-                    f"Step '{node_name}' output: {node_output}"
-                )
                 result.update(node_output)
         duration = time.time() - start_time
         logger.info(
@@ -117,12 +114,13 @@ async def invoke(input: Input) -> Response:
             "original_result": result.get("knowledge_answer", ""),
             "human_language": result.get("human_language", "en"),
             "result_language": result.get(
-                "knowledge_language", "en"
+                "answer_language", "en"
             ),
             "knowledge_language": result.get(
                 "knowledge_language", "en"
             ),
             "source_scores": {},
+            "sources": [],
         }
         knowledge_docs = result.get("knowledge_docs", {})
         source_scores = result.get("source_scores", {})
@@ -156,8 +154,6 @@ async def invoke(input: Input) -> Response:
                 {doc["source"]: doc for doc in sources
                  if "source" in doc}.values()
             )
-
-        logger.debug(f"Full result: {json_result}")
 
         return Response(**json_result)
 
