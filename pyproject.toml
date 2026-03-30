@@ -8,25 +8,22 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "~3.11"
+python = ">=3.12,<3.15"
 langchain = "^1.1.0"
 langchain-core = "^1.1.0"
 python-dotenv = "1.1.1"
-faiss-cpu = "1.12.0"
-openai = "2.2.0"
-load-dotenv = "0.1.0"
-beautifulsoup4 = "4.14.2"
 async-timeout = "5.0.1"
 aio-pika = "9.5.7"
 aiormq = "6.9.0"
-tiktoken = "0.12.0"
-gitpython = "3.1.45"
 bcrypt = "^5.0.0"
-alkemio-virtual-contributor-engine = {git = "https://git@github.com/alkem-io/virtual-contributor-engine.git", tag = "v0.7.0"}
+alkemio-virtual-contributor-engine = {git = "https://github.com/alkem-io/virtual-contributor-engine.git", tag = "v0.8.0"}
 
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "7.3.0"
+pytest = "^8.0"
+pytest-asyncio = "^0.25"
+pytest-cov = "^6.0"
 
 [build-system]
 requires = ["poetry-core"]

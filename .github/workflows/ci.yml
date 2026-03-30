@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install --only dev --no-root --no-ansi
+
+      - name: Run flake8
+        run: poetry run flake8
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install --no-root --no-ansi
+
+      - name: Run tests with coverage
+        run: >
+          poetry run pytest
+          --cov=ai_adapter --cov=main
+          --cov-report=term-missing
+          --cov-fail-under=90
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -f Dockerfile --target runtime .
