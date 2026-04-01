@@ -1,38 +1,39 @@
+# Local build Dockerfile - uses parent directory as build context
+# so the path dependency on ../alkemio-virtual-contributor-engine resolves.
+# Used by quickstart-services-ai.yml for local development.
+
 # =============================================================================
 # Stage 1: Build stage - Python 3.12 (required by pyproject.toml)
 # =============================================================================
 FROM python:3.12-slim-bookworm AS builder
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        git \
-        ca-certificates && \
+    apt-get install -y --no-install-recommends git ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Poetry in a separate venv to avoid PEP 668 issues
 RUN python3 -m venv /opt/poetry && \
     /opt/poetry/bin/pip install --no-cache-dir poetry && \
     ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry
 
-# Configure Poetry to create venv in project
 ENV POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     POETRY_VIRTUALENVS_CREATE=true \
     POETRY_CACHE_DIR=/tmp/poetry_cache
 
-# Copy only dependency files first (better layer caching)
-COPY pyproject.toml poetry.lock* ./
+# Copy the shared library so the path dependency resolves
+COPY alkemio-virtual-contributor-engine/ /alkemio-virtual-contributor-engine/
 
-# Install dependencies (without dev dependencies)
+# Copy dependency files from the project subdirectory
+COPY virtual-contributor-guidance-engine/pyproject.toml virtual-contributor-guidance-engine/poetry.lock* ./
+
 RUN poetry install --only main --no-root --no-ansi && \
     rm -rf $POETRY_CACHE_DIR
 
-# Copy application code (kept after dependency install for better caching)
-COPY . /app/
+# Copy application code from the project subdirectory
+COPY virtual-contributor-guidance-engine/ /app/
 
-# Create files/dirs that the runtime cannot create
 RUN touch /app/app.log
 
 # =============================================================================
@@ -40,11 +41,10 @@ RUN touch /app/app.log
 # =============================================================================
 FROM python:3.12-slim-bookworm AS runtime
 
-COPY --from=builder --chown=1000:1000 /app /app
-
 WORKDIR /app
 
-# Set PATH to use the venv's python executable
+COPY --from=builder /app /app
+
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -52,5 +52,4 @@ ENV PATH="/app/.venv/bin:$PATH" \
 RUN useradd --create-home --uid 1000 appuser
 USER appuser
 
-# Run main.py using the venv python
 ENTRYPOINT ["/app/.venv/bin/python", "main.py"]

@@ -2,7 +2,8 @@
 .env
 openai.env
 azure.env
-/__pycache__/*
+__pycache__/
+*.pyc
 /vectordb/*
 local.env
 docker-compose-local.yaml
@@ -10,3 +11,5 @@ docker-compose-local.yaml
 *.log
 repos
 repos/*
+.coverage
+.pytest_cache/
